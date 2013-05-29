@@ -3,25 +3,230 @@ package org.findex
 
 class SuffixArray(T:Array[Byte]) {
   val n = T.size
-  val SA: Array[Int] = new Array[Int](n)
+  val SA: Array[Int] = Array.fill[Int](n)(-1)
+  val t: Array[Boolean] = new Array[Boolean](n)
   val k = 256
 
-  lazy val C = {
-    val C = new Array[Int](n)
-    T foreach { idx:Byte => C(idx & 0xff)+=1 }
-  }
 
   def getBuckets() = {
+    val C = new Array[Int](k)
+    T foreach { idx:Byte => C(idx & 0xff)+=1 }
     val B = new Array[Int](k)
     var sum = 0
     for (i <- 0 until k) {
       sum+=C(i)
       B(i) = sum
     }
+    B
+  }
+  def getBucketStarts() = {
+    val C = new Array[Int](k)
+    T foreach { idx:Byte => C(idx & 0xff)+=1 }
+    val B = new Array[Int](k)
+    var sum = 0
+    for (i <- 0 until k) {
+      B(i) = sum
+      sum+=C(i)
+    }
+    B
+  }
+
+  def chr(i:Int) =  T(i) & 0xff
+  def isLMS(i:Int) = i>0 && t(i) && !t(i-1) 
+  def buildSL() = {
+    t(n-2) = false  // 'L'
+    t(n-1) = true   // 'S'
+    for ( i <- n-3 to 0 by -1) {
+      t(i) = if ( chr(i) < chr(i+1) || chr(i) == chr(i+1) && t(i+1) == true ) true else false
+    }
+  }
+  def markLMS(bkt:Array[Int]) = {
+    for ( i <- 1 until n) {
+      if (isLMS(i)) {
+        val t = bkt(chr(i))-1
+        bkt(chr(i))=t
+        SA(t) = i
+      }
+    }
+  }
+  def printSL(sl:Array[Boolean] = t) = {
+    println("*** printSL")
+    
+    for ( i <- 0 until n-1) {
+      printf("%c",chr(i))
+    }
+    printf("$\n")
+
+    println(SL2String(sl))
+
+  }
+  def printSA(lmsOnly:Boolean=false) = {
+    println("*** printSA")
+    def stringLike(i:Int):String = {
+      val idx = SA(i)
+      if ( idx == -1 ) 
+        List.fill(n)(".").mkString
+      else
+        new String(T.slice(idx,n)) + "$" + new String(T.slice(0,idx))
+    }
+    for ( i <- 0 until n) {
+      if ( ! lmsOnly || isLMS(SA(i))) {
+        printf("%2d -> %2d.\t%s\n",i,SA(i),stringLike(i)) 
+      }
+    }
+  }
+
+  def SL2String(sl:Array[Boolean] = t) = sl.map( x => if (x) "S" else "L" ).mkString("")
+  
+  def printBuckets(b:Array[Int]) {
+    var skip = false
+    var prev = b(0)
+    println("*** printBuckets")
+    printf("0(\\0)\t%d\n",b(0))
+    for ( i <- 1 until b.size) {
+      if ( b(i) != prev ) {
+        if (skip) {
+          printf("...\n",b(0))
+          skip = false
+        }
+        printf("%d(%c)\t%d\n" , i,i , b(i))
+      } else {
+        skip = true
+      }
+      prev = b(i)      
+    }
+  }
+  def initOrderedSA = {
+    (0 until n).foreach(i => SA(i)=i )
+  }
+  def naiveBuild() = {
+    import scala.util.Sorting.quickSort
+    initOrderedSA
+    class SASorter extends Ordering[Int] { 
+      def compare(x: Int,y: Int) = { 
+        val xi = SA(x)
+        val yi = SA(y)
+        val xs = new String(T.slice(xi,n) ++ Array[Byte](0) ++  T.slice(0,xi))
+        val ys = new String(T.slice(yi,n) ++ Array[Byte](0) ++ T.slice(0,yi))
+        xs compare ys
+      } 
+    }
+    SA.sorted(new SASorter).copyToArray(SA)
+  }
+  
+  def naiveIsSASorted(firstCount:Int=n):Boolean = {
+    var xi = SA(0)
+    if ( xi >= 0 ) {
+      var prev =  new String(T.slice(xi,n) ++ Array[Byte](0) ++  T.slice(0,xi))
+      for (i <- 1 until firstCount) {
+        xi = SA(i)
+        val current =  new String(T.slice(xi,n) ++ Array[Byte](0) ++  T.slice(0,xi))
+        if (current < prev) return false
+        prev = current
+      } 
+      true
+    } else {
+      false
+    }
+  }
+
+  def induceSAl() = {
+    val bkt = getBucketStarts()
+    for (i <- 0 until n) {
+      val j = SA(i)-1
+      if ( j>=0 && t(j) == false ) { // L put it on start bucket
+        val l = chr(j)
+        val k = bkt(l)
+        bkt(l)=k+1
+        SA(k) = j
+      }
+    }
+  }
+
+  def induceSAs() = {
+    val bkt = getBuckets()
+    for ( i <- n-1 to 0 by -1 ) {
+      val j = SA(i)-1
+      if ( j>=0 && t(j) == true ) { // S put it on end of bucket
+        val l = chr(j)
+        val k = bkt(l)-1
+        bkt(l)=k
+        SA(k) = j
+      }
+    }
+  }
+
+  def buildStep1() = {
+    val bkt = getBuckets()
+    
+    buildSL()
+    markLMS(bkt)
+    induceSAl()
+    induceSAs()
+  }
+  
+  // compact all the sorted substrings into the first n1 items of SA
+  // on this step all LMS are already sorted
+  def fillSAWithLMS():Int = {
+    var n1 = 0
+    for (i <- 0 until n) {
+      if(isLMS(SA(i))) {
+        SA(n1)=SA(i)
+        n1+=1
+      }
+    }
+    for ( i<- n1 until n) {
+      SA(i) = -1
+    }
+    return n1
+  }
+  
+  // find the lexicographic names of all substrings
+
+  def calcLexNames(n1:Int) {
+    var prev = -1
+    var name = 0
+    for (i <- 0 until n1) {
+      var pos = SA(i)
+      var diff = false
+      var d = 0
+      
+      def reachedLMS(d:Int) = d > 0 && (isLMS(pos+d) || isLMS(prev+d))
+      def cmpSuff(cur:Int,prev:Int,len:Int) = chr(cur+len)!=chr(prev+len) || t(cur+len)!=t(prev+len)
+
+      if (  prev != -1  ) 
+        while (! diff && d < n && ! reachedLMS(d) ) {
+          if (cmpSuff(pos,prev,d) ) diff=true else d+=1
+        }
+      else
+        diff = true
+      if ( diff/* || cmpSuff(pos,prev,d)*/) {
+        name+=1
+        prev = pos
+      }
+      
+
+      pos= if (pos % 2==0) pos/2 else (pos-1)/2
+      SA(n1+pos)=name-1;
+    }
+    var j = n-1
+    for (i<-n-1 to n1 by -1 ) {
+      if (SA(i)>=0) {
+        SA(j)=SA(i)
+        j = j - 1
+      }
+    }
+    println(n-n1,n)
+    println(SA(13),SA(14),SA(15),SA(16))
   }
 
   def build = {
-    val bkt = getBuckets()
+    buildStep1()
+    
+
+    
+    val lms_count = fillSAWithLMS()
+    calcLexNames(lms_count)
 
     // getCounts
 
@@ -33,32 +238,7 @@ class SuffixArray(T:Array[Byte]) {
     // do { c1 = c0; } while((0 <= --i) && ((c0 = T.get(i)) >= c1));
 
   }
-  def stringLike(i:Int):String = {
-    val idx = SA(i)
-    val t = T.slice(idx,n) ++  T.slice(0,idx)
-    new String(t)
-  }
 
-  private def sortFirst() = {
-    val cnt = new Array[Int](n)
-
-
-
-    /*
-    for (i <- 0 to d.size-1) {
-      val j = d(i) & 0xff
-      sa(cnt(j))=i.asInstanceOf[Byte]
-      cnt(j)+=1
-    }
-    */
-  }
-
-  override def toString: String = {
-    for ( i <- 0 until n ) {
-      println(i + ". " + stringLike(i))
-    }
-    "suffixArray dump = " + new String(T)
-  }
 }
 
 object IndexMaker {
