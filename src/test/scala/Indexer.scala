@@ -3,8 +3,18 @@ package org.findex.test
 import org.scalatest.FunSuite
 import org.findex._
 
+class GSuite extends FunSuite {
+  def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
+  test("SuffixArray generics") {
+    val bs = fromString("\276")
+    val sa = new SuffixArray(bs)
+    assert(sa.toInt(sa.S(0)) == 194)
+    assert(sa.chr(0) == 194)
+  }
+}
 class ExampleSuite extends FunSuite {
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
+
 
   test("SuffixArray basics") {
     /*
@@ -65,8 +75,24 @@ class ExampleSuite extends FunSuite {
     // actually everething is already sorted
     assert(naive.SA.sameElements(sa.SA))
 
+    // sa.buildStep2()
     val lms_count = sa.fillSAWithLMS()
-    sa.calcLexNames(lms_count)
+    var (names_count,sa1:Array[Int]) = sa.calcLexNames(lms_count)
+
+    assert(names_count==3)
+    assert(Array(2,2,1,0).sameElements(sa1))
+
+    // Avoid recursve plays - direct go to step3
+    var SA3  = new SuffixIntArray(sa1,names_count)
+    SA3.naiveBuild()
+    sa.buildStep3(sa1,SA3.SA)
+
+    assert(Array(16,15,14,10,6,2,11,7,3,1,0,13,12,9,5,8,4).sameElements(sa.SA))
+
+
+    // buildStep3()
+    //val sorted_sa = sa.sortReducedSA(sa1,names_count)
+    //println(sorted_sa.mkString(","))
 
     // S1: 2 2 1 0
 
