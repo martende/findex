@@ -1,7 +1,7 @@
-package org.findex.test
+package org.fmindex.tests
 
 import org.scalatest.FunSuite
-import org.findex._
+import org.fmindex._
 
 class GSuite extends FunSuite {
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
@@ -85,31 +85,13 @@ class ExampleSuite extends FunSuite {
     // Avoid recursve plays - direct go to step3
     var SA3  = new SuffixIntArray(sa1,names_count)
     SA3.naiveBuild()
-    sa.buildStep3(sa1,SA3.SA)
+    sa.buildStep3(SA3.SA)
 
     assert(Array(16,15,14,10,6,2,11,7,3,1,0,13,12,9,5,8,4).sameElements(sa.SA))
 
-
-    // buildStep3()
-    //val sorted_sa = sa.sortReducedSA(sa1,names_count)
-    //println(sorted_sa.mkString(","))
-
-    // S1: 2 2 1 0
-
-    //sa.printSA(lmsOnly=true)
   }
 
   test("nonaive example - suffixes are not sorted after first induce step") {
-    // Random generator
-    val random = new scala.util.Random
-
-    // Generate a random string of length n from the given alphabet
-    def randomString(alphabet: String)(n: Int): String = 
-      Stream.continually(random.nextInt(alphabet.size)).map(alphabet).take(n).mkString
-
-    // Generate a random alphabnumeric string of length n
-    def randomAlphanumericString(n: Int) = 
-      randomString("abcdefghijklmnopqrstuvwxyz0123456789")(n)
 
     val in = // randomAlphanumericString(200)
       "2b2w9vzrtqy3vzclgoofxgz9nal81y1fg8rozxkb5aaep1vpafp3cgsumc0z1rhpatcwo4d7nxc751h3a4woj3dbjf6ynfbkoom8sxoc9t3dqzkfs9akc6cmsy7cndi6bf116fju5rcsysixgkaih4zbkl8qo3ko2c42f34x6cqdew8x2jgz36r4bskabx02lxbfzokc"
@@ -132,6 +114,11 @@ class ExampleSuite extends FunSuite {
 
     assert(! naive.SA.sameElements(sa.SA))
 
+    // Test full cycle
+
+    val sa2 = new SuffixArray(fromString(in))
+    sa2.build
+    assert(naive.SA.sameElements(sa2.SA))
   }
   test("naive sort") {
     val sa = new SuffixArray(fromString("missisippi"))

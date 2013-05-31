@@ -1,4 +1,4 @@
-package org.findex
+package org.fmindex
 
 
 abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
@@ -256,20 +256,19 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
     }
     return SA1
   }
-  def buildStep2():Pair[Array[Int],Array[Int]] =  {
-    val lms_count = fillSAWithLMS()
+  def buildStep2():Array[Int] =  {
+    fillSAWithLMS()
     val (names_count,reduced_string) = calcLexNames(lmsCount)
 
-    Pair(reduced_string,sortReducedSA(reduced_string,names_count))
+    sortReducedSA(reduced_string,names_count)
 
   }
 
-  def buildStep3(s1unused:Array[Int],SA1:Array[Int]) =  {
+  def buildStep3(SA1:Array[Int]) =  {
     val bkt = getBuckets()
     var j = 0
     val s1 = new Array[Int](lmsCount)
     // WE Have all LMS sorted - now just set LMS sufixes in empty SA1 acording its order and repeat step1
-    // TODO: Why not to direct build SA1 but in 2 steps
 
     for (i<- 1 until n)
       if (isLMS(i)) {
@@ -299,18 +298,9 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
   def build = {
     buildStep1()
 
-    val ret = buildStep2()
+    val SA1 = buildStep2()
 
-    buildStep3(ret._1,ret._2)
-
-    // getCounts
-
-    // getBuckets - end of symbol buckets
-
-
-
-    // b = -1; i = n - 1; j = n; m = 0; c0 = S.get(n - 1);
-    // do { c1 = c0; } while((0 <= --i) && ((c0 = S.get(i)) >= c1));
+    buildStep3(SA1)
 
   }
 
