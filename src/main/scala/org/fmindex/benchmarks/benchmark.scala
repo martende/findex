@@ -30,7 +30,7 @@ class BenchmarkBWTWrite extends SimpleScalaBenchmark with RandomGenerator {
   var SA: SuffixArray = _
   override def setUp() {
     // set up all your benchmark data here
-    val is = fromString(randomAlphanumericString(999))
+    val is = fromString(randomAlphanumericString(9999))
     SA = new SuffixArray(is)
     SA.build
   }
@@ -57,6 +57,29 @@ class BenchmarkBWTWrite extends SimpleScalaBenchmark with RandomGenerator {
 
     //////////////////////////////////////////////////////////
   }
+  def time_writeBWTBulk2(reps: Int) = repeat(reps) {
+    //////////////////// CODE SNIPPET ONE ////////////////////
+
+    var result = 0
+
+    SA.writeBWTBulk2("/tmp/bwt.txt")
+
+    result // always have your snippet return a value that cannot easily be "optimized away"
+
+    //////////////////////////////////////////////////////////
+  }
+  def time_writeBWTJava(reps: Int) = repeat(reps) {
+    //////////////////// CODE SNIPPET ONE ////////////////////
+
+    var result = 0
+
+    SA.writeBWTNative("/tmp/bwt.txt")
+
+    result // always have your snippet return a value that cannot easily be "optimized away"
+
+    //////////////////////////////////////////////////////////
+  }
+
 }
 
 class Benchmark extends SimpleScalaBenchmark with RandomGenerator {

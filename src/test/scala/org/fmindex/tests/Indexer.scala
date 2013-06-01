@@ -134,12 +134,27 @@ class ExampleSuite extends FunSuite {
     val sa = new SuffixArray(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.txt")
     sa.build
-    sa.writeBWT(f.name)
+    sa.writeBWTNative(f.name)
 
     val ti:Input = Resource.fromFile(f.name)
     var content = new String(ti.byteArray).replace('\0','$')
-
+    println(content)
     assert(content == "ard$rcaaaabb")
+    //f.delete()
+  }
+
+  test("fl test") {
+    val sa = new SuffixArray(fromString("abracadabra"))
+    var f = Path.fromString("/tmp/bwttest.fl")
+    sa.build
+    sa.writeFL(f.name)
+
+    val ti:Input = Resource.fromFile(f.name)
+    // 3,0,6,7,8,9,10,11,5,2,1,4
+
+    //var content = new String(ti.byteArray).replace('\0','$')
+
+    //assert(content == "ard$rcaaaabb")
   }
 
 }

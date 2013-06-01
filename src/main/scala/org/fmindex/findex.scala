@@ -1,6 +1,8 @@
 package org.fmindex
 
 import scalax.io._
+import scalax.file.Path
+import scalax.io.StandardOpenOption._
 
 abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
   val S:Array[T] = _s
@@ -321,25 +323,57 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
     def sizeInBytes = 1
     def toBytes(data: Array[Char]) = data.asInstanceOf[Array[Byte]]
   }
+
+  def writeFL(fname:String):Unit = {
+    val output:Output = Resource.fromFile(fname)
+    val fl= new Array[Int](n)
+    var bkt=getBucketStarts()
+    var bkt0 = bkt.clone()
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      val L_i = chr(if (pIdx >= 0) pIdx else pIdx+n )
+      var j = bkt(L_i)
+      fl(j)=i
+      bkt(L_i)=j+1
+    }
+
+    output.write(bkt0)
+
+    println(fl.mkString(","))
+  }
+  def writeBWTNative(fname:String):Unit = {
+    var output = new java.io.FileOutputStream(fname)
+    val bwt= new Array[Byte](n)
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      bwt(i) = chr(if (pIdx >= 0) pIdx else pIdx+n ).toByte
+    }
+    output.write(bwt)
+    output.close()
+  }
   def writeBWT(fname:String):Unit = {
     val output:Output = Resource.fromFile(fname)
     val bwt= new Array[Byte](n)
     for ( i<- 0 until n) {
       val pIdx = SA(i)-1
-      bwt(i) = chr(if (pIdx >= 0) pIdx else pIdx+n ).asInstanceOf[Byte]
+      bwt(i) = chr(if (pIdx >= 0) pIdx else pIdx+n ).toByte
     }
     output.write(bwt)
-  }
-  def writeFL(fname:String):Unit = {
-    val output:Output = Resource.fromFile(fname)
-
   }
   def writeBWTBulk(fname:String):Unit = {
     val output:Output = Resource.fromFile(fname)
     //val bwt= new Array[Byte](n)
     for ( i<- 0 until n) {
       val pIdx = SA(i)-1
-      output.write(chr(if (pIdx >= 0) pIdx else pIdx+n ).asInstanceOf[Byte])
+      output.write(chr(if (pIdx >= 0) pIdx else pIdx+n ).toByte)
+    }
+  }
+  def writeBWTBulk2(fname:String):Unit = {
+    val output = Path.fromString(fname).outputStream(WriteTruncate:_*)
+    //val bwt= new Array[Byte](n)
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      output.write(chr(if (pIdx >= 0) pIdx else pIdx+n ).toByte)
     }
   }
 }
