@@ -2,6 +2,8 @@ package org.fmindex.tests
 
 import org.scalatest.FunSuite
 import org.fmindex._
+import scalax.file.Path
+import scalax.io._
 
 class GSuite extends FunSuite {
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
@@ -128,13 +130,16 @@ class ExampleSuite extends FunSuite {
     assert(sa.naiveIsSASorted())
     assert(Array(10,9,6,4,1,0,8,7,5,3,2).sameElements(sa.SA))
   }
-                    /*
-  test("pop is invoked on an empty stack") {
+  test("bwt test") {
+    val sa = new SuffixArray(fromString("abracadabra"))
+    var f = Path.fromString("/tmp/bwttest.txt")
+    sa.build
+    sa.writeBWT(f.name)
 
-    val emptyStack = new Stack[Int]
-    intercept[NoSuchElementException] {
-      emptyStack.pop()
-    }
-    assert(emptyStack.isEmpty)
-  }*/
+    val ti:Input = Resource.fromFile(f.name)
+    var content = new String(ti.byteArray).replace('\0','$')
+
+    assert(content == "ard$rcaaaabb")
+  }
+
 }

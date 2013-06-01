@@ -9,17 +9,7 @@ import com.google.caliper.Param
 // a caliper benchmark is a class that extends com.google.caliper.Benchmark
 // the SimpleScalaBenchmark trait does it and also adds some convenience functionality
 
-class Benchmark extends SimpleScalaBenchmark {
-
-  // to make your benchmark depend on one or more parameterized values, create fields with the name you want
-  // the parameter to be known by, and add this annotation (see @Param javadocs for more details)
-  // caliper will inject the respective value at runtime and make sure to run all combinations
-  @Param(Array("10", "100", "1000", "5000","10000","20000"))
-  val length: Int = 0
-
-  var is: Array[Byte] = _
-  var SA: Array[Int] = _
-
+trait RandomGenerator {
   // Random generator
   val random = new scala.util.Random
 
@@ -32,6 +22,54 @@ class Benchmark extends SimpleScalaBenchmark {
     randomString("abcdefghijklmnopqrstuvwxyz0123456789")(n)
 
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
+
+}
+
+class BenchmarkBWTWrite extends SimpleScalaBenchmark with RandomGenerator {
+
+  var SA: SuffixArray = _
+  override def setUp() {
+    // set up all your benchmark data here
+    val is = fromString(randomAlphanumericString(999))
+    SA = new SuffixArray(is)
+    SA.build
+  }
+
+  def time_writeBWT(reps: Int) = repeat(reps) {
+    //////////////////// CODE SNIPPET ONE ////////////////////
+
+    var result = 0
+
+    SA.writeBWT("/tmp/bwt.txt")
+
+    result // always have your snippet return a value that cannot easily be "optimized away"
+
+    //////////////////////////////////////////////////////////
+  }
+  def time_writeBWTBulk(reps: Int) = repeat(reps) {
+    //////////////////// CODE SNIPPET ONE ////////////////////
+
+    var result = 0
+
+    SA.writeBWTBulk("/tmp/bwt.txt")
+
+    result // always have your snippet return a value that cannot easily be "optimized away"
+
+    //////////////////////////////////////////////////////////
+  }
+}
+
+class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
+
+  // to make your benchmark depend on one or more parameterized values, create fields with the name you want
+  // the parameter to be known by, and add this annotation (see @Param javadocs for more details)
+  // caliper will inject the respective value at runtime and make sure to run all combinations
+  @Param(Array("10", "100", "1000", "5000","10000","20000"))
+  val length: Int = 0
+
+  var is: Array[Byte] = _
+  var SA: Array[Int] = _
+
 
   override def setUp() {
     // set up all your benchmark data here

@@ -1,5 +1,6 @@
 package org.fmindex
 
+import scalax.io._
 
 abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
   val S:Array[T] = _s
@@ -80,7 +81,7 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
       if ( idx == -1 ) 
         List.fill(n)(".").mkString
       else
-        arrayToString(S.slice(idx,n)) + "$" + arrayToString(S.slice(0,idx))
+        arrayToString(S.slice(idx,n)) + arrayToString(S.slice(0,idx))
     }
     for ( i <- 0 until n) {
       if ( ! lmsOnly || isLMS(SA(i))) {
@@ -309,12 +310,37 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
 class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
   def chr(i:Int):Int =  S(i) & 0xff
   def toInt(i:Byte):Int =  i  & 0xff
-  def arrayToString(s : Array[Byte]) : String = new String(s)
+  def arrayToString(s : Array[Byte]) : String = new String(s).replace('\0','$')
   val ZERO:Array[Byte] = Array[Byte](0)
   def arrayToString(s : scala.collection.mutable.ArraySeq[Byte]):String = {
     val ts = new Array[Byte](s.size)
     s.copyToArray(ts)
     arrayToString(ts)
+  }
+  implicit object Converter extends OutputConverter[Array[Char]] {
+    def sizeInBytes = 1
+    def toBytes(data: Array[Char]) = data.asInstanceOf[Array[Byte]]
+  }
+  def writeBWT(fname:String):Unit = {
+    val output:Output = Resource.fromFile(fname)
+    val bwt= new Array[Byte](n)
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      bwt(i) = chr(if (pIdx >= 0) pIdx else pIdx+n ).asInstanceOf[Byte]
+    }
+    output.write(bwt)
+  }
+  def writeFL(fname:String):Unit = {
+    val output:Output = Resource.fromFile(fname)
+
+  }
+  def writeBWTBulk(fname:String):Unit = {
+    val output:Output = Resource.fromFile(fname)
+    //val bwt= new Array[Byte](n)
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      output.write(chr(if (pIdx >= 0) pIdx else pIdx+n ).asInstanceOf[Byte])
+    }
   }
 }
 
