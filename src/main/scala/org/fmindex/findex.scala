@@ -325,7 +325,8 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
   }
 
   def writeFL(fname:String):Unit = {
-    val output:Output = Resource.fromFile(fname)
+
+    val outputc = Path.fromString(fname).outputStream(WriteTruncate:_*)
     val fl= new Array[Int](n)
     var bkt=getBucketStarts()
     var bkt0 = bkt.clone()
@@ -336,10 +337,9 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
       fl(j)=i
       bkt(L_i)=j+1
     }
-
-    output.write(bkt0)
-
-    println(fl.mkString(","))
+    outputc.write(bkt0)
+    val output = Resource.fromFile(fname)
+    output.append(fl)
   }
   def writeBWTNative(fname:String):Unit = {
     var output = new java.io.FileOutputStream(fname)
@@ -351,8 +351,19 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
     output.write(bwt)
     output.close()
   }
+
   def writeBWT(fname:String):Unit = {
-    val output:Output = Resource.fromFile(fname)
+    val output = Path.fromString(fname).outputStream(WriteTruncate:_*)
+    val bwt= new Array[Byte](n)
+    for ( i<- 0 until n) {
+      val pIdx = SA(i)-1
+      bwt(i) = chr(if (pIdx >= 0) pIdx else pIdx+n ).toByte
+    }
+    output.write(bwt)
+  }
+
+  def writeBWT3(fname:String):Unit = {
+    val output:Output = Resource.fromFile(fname).outputStream
     val bwt= new Array[Byte](n)
     for ( i<- 0 until n) {
       val pIdx = SA(i)-1

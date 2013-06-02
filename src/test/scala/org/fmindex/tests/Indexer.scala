@@ -4,6 +4,7 @@ import org.scalatest.FunSuite
 import org.fmindex._
 import scalax.file.Path
 import scalax.io._
+import scalax.io.StandardOpenOption._
 
 class GSuite extends FunSuite {
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
@@ -134,23 +135,41 @@ class ExampleSuite extends FunSuite {
     val sa = new SuffixArray(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.txt")
     sa.build
-    sa.writeBWTNative(f.name)
+    sa.writeBWTNative(f.path)
 
-    val ti:Input = Resource.fromFile(f.name)
+    val ti:Input = Resource.fromFile(f.path)
     var content = new String(ti.byteArray).replace('\0','$')
-    println(content)
     assert(content == "ard$rcaaaabb")
-    //f.delete()
+    f.delete()
   }
 
   test("fl test") {
     val sa = new SuffixArray(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.fl")
     sa.build
-    sa.writeFL(f.name)
+    sa.writeFL(f.path)
 
-    val ti:Input = Resource.fromFile(f.name)
-    // 3,0,6,7,8,9,10,11,5,2,1,4
+    val ti:Input = f.inputStream
+    //println(java.nio.ByteBuffer.wrap(ti.byteArray))
+    val bucket_size = 256 * 4
+
+    val fl_len = f.size match {
+      case Some(size) =>
+        val s = size -  bucket_size
+        (s - s  % 4).toInt
+      case None => -1
+    }
+    println(f.path,f.size,fl_len,f.size)
+    assert(fl_len >0 )
+    val fi = f.bytes.drop(bucket_size)
+    val fl:Array[Int] = new Array[Int](fl_len/4)
+
+
+    for ( i <- 0 until fl_len by 4 ) {
+      fl(i/4)= (fi(i) << 24 )+ (fi(i+1) << 16) +( fi(i+2) << 8 ) + fi(i+3)
+    }
+    //
+    assert(Array(3,0,6,7,8,9,10,11,5,2,1,4).sameElements(fl))
 
     //var content = new String(ti.byteArray).replace('\0','$')
 

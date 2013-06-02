@@ -79,6 +79,17 @@ class BenchmarkBWTWrite extends SimpleScalaBenchmark with RandomGenerator {
 
     //////////////////////////////////////////////////////////
   }
+  def time_writeBWT3(reps: Int) = repeat(reps) {
+    //////////////////// CODE SNIPPET ONE ////////////////////
+
+    var result = 0
+
+    SA.writeBWT3("/tmp/bwt.txt")
+
+    result // always have your snippet return a value that cannot easily be "optimized away"
+
+    //////////////////////////////////////////////////////////
+  }
 
 }
 
