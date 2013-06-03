@@ -3,8 +3,29 @@ package org.fmindex
 import scalax.io._
 import scalax.file.Path
 import scalax.io.StandardOpenOption._
+import scala.reflect.ClassTag
 
-abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
+trait SuffixAlgo[T] {
+  val n:Int
+
+  def cf(c:T):Int
+  def occ(c:T,i:Int):Int
+
+  def search(in:Array[T]):Option[(Int,Int)] = {
+    var sp = 1
+    var ep = n
+    var i = in.length-1
+    while ((sp<ep) && (i >= 0)) {
+      val c  = in(i)
+      i-=1
+      sp = cf(c) + occ(c,sp)
+      ep = cf(c) + occ(c,ep)
+    }
+    if ( sp < ep ) Some((sp,ep)) else None
+  }
+}
+
+abstract class AbstractSuffixArray[T:Numeric](_s:Array[T]) extends SuffixAlgo[T] {
   val S:Array[T] = _s
   val n = S.size
   val SA: Array[Int] = Array.fill[Int](n)(-1)
@@ -20,6 +41,10 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
   def arrayToString(s : Array[T]) : String
   def arrayToString(s : scala.collection.mutable.ArraySeq[T]):String
   val ZERO:Array[T]
+
+  protected lazy val _C:Array[Int] = getBucketStarts()
+  def cf(c:T) = _C(c.asInstanceOf[Int])
+  def occ(c:T,i:Int) = 1
 
   def getBuckets() = {
     val C = new Array[Int](k)
@@ -152,7 +177,7 @@ abstract class AbstractSuffixArray[T<:AnyVal](_s:Array[T]) {
       val j = SA(i)-1
       if ( j>=0 && t(j) == false ) { // L put it on start bucket
         val l = chr(j)
-        val k = bkt(l)
+        val k:Int = bkt(l)
         bkt(l)=k+1
         SA(k) = j
       }
@@ -319,6 +344,7 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
     s.copyToArray(ts)
     arrayToString(ts)
   }
+
   implicit object Converter extends OutputConverter[Array[Char]] {
     def sizeInBytes = 1
     def toBytes(data: Array[Char]) = data.asInstanceOf[Array[Byte]]
@@ -335,7 +361,7 @@ class SuffixArray(_s:Array[Byte]) extends AbstractSuffixArray(_s) {
       val L_i = chr(if (pIdx >= 0) pIdx else pIdx+n )
       var j = bkt(L_i)
       fl(j)=i
-      bkt(L_i)=j+1
+      bkt(L_i)=(j+1).toByte
     }
     outputc.write(bkt0)
     val output = Resource.fromFile(fname)

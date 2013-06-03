@@ -1,5 +1,5 @@
 package scala.org.fmindex
-
+/*
 class WAT(alphabetPower:Int,length:Int) {
     type cType = Int
     
@@ -17,3 +17,4 @@ object WAT {
     }
     def GetAlphabetNum(in:Array[cType]) = max(in)+1
 }
+*/

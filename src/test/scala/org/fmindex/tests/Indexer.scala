@@ -131,6 +131,11 @@ class ExampleSuite extends FunSuite {
     assert(sa.naiveIsSASorted())
     assert(Array(10,9,6,4,1,0,8,7,5,3,2).sameElements(sa.SA))
   }
+  test("occ test") {
+    val sa = new SuffixArray(fromString("abracadabra"))
+    sa.build
+    println(sa.cf(1))
+  }
   test("bwt test") {
     val sa = new SuffixArray(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.txt")
@@ -171,6 +176,7 @@ class ExampleSuite extends FunSuite {
     //
     assert(Array(3,0,6,7,8,9,10,11,5,2,1,4).sameElements(fl))
 
+    f.delete()
     //var content = new String(ti.byteArray).replace('\0','$')
 
     //assert(content == "ard$rcaaaabb")
