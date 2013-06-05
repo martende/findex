@@ -1,6 +1,6 @@
 package org.fmindex.benchmarks
 
-import org.fmindex.SuffixArray
+
 
 import SAIS._
 
@@ -27,11 +27,11 @@ trait RandomGenerator {
 
 class BenchmarkBWTWrite extends SimpleScalaBenchmark with RandomGenerator {
 
-  var SA: SuffixArray = _
+  var SA: org.fmindex.fmindex0.SuffixArray = _
   override def setUp() {
     // set up all your benchmark data here
     val is = fromString(randomAlphanumericString(9999))
-    SA = new SuffixArray(is)
+    SA = new org.fmindex.fmindex0.SuffixArray(is)
     SA.build
   }
 
@@ -111,24 +111,20 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
     SA = new Array[Int](length+1)
   }
 
-  // the actual code you'd like to test needs to live in one or more methods
-  // whose names begin with 'time' and which accept a single 'reps: Int' parameter
-  // the body of the method simply executes the code we wish to measure, 'reps' times
-  // you can use the 'repeat' method from the SimpleScalaBenchmark trait to repeat with relatively low overhead
-  // however, if your code snippet is very fast you might want to implement the reps loop directly with 'while'
-  def timeScalaSuffixArray(reps: Int) = repeat(reps) {
-    //////////////////// CODE SNIPPET ONE ////////////////////
-
+  def timeScalaOldSuffixArray(reps: Int) = repeat(reps) {
     var result = 0
-
-    var sf = new SuffixArray(is)
+    var sf = new org.fmindex.fmindex0.SuffixArray(is)
     sf.build
-
-    result // always have your snippet return a value that cannot easily be "optimized away"
-
-    //////////////////////////////////////////////////////////
+    result
+  }
+  def timeScalaSuffixArray(reps: Int) = repeat(reps) {
+    var result = 0
+    var sf = new org.fmindex.SAISBuilder(is)
+    sf.build
+    result
   }
 
+  /*
   def timeJavaSuffixArray(reps:Int) = repeat(reps) {
     var result = 0
 
@@ -137,6 +133,8 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
 
     result
   }
+  */
+
   override def tearDown() {
     // clean up after yourself if required
   }
