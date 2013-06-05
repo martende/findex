@@ -162,7 +162,6 @@ class BasicTests extends FunSuite with RandomGenerator {
     val ti:Input = Resource.fromFile(f.path)
     var content = new String(ti.byteArray).replace('\0','$')
     assert(content == "ard$rcaaaabb")
-    f.delete()
   }
 
   test("fl test") {
@@ -170,7 +169,6 @@ class BasicTests extends FunSuite with RandomGenerator {
     var f = Path.fromString("/tmp/bwttest.fl")
     sa.build
     sa.writeFL(f.path)
-
     val ti:Input = f.inputStream
     //println(java.nio.ByteBuffer.wrap(ti.byteArray))
     val bucket_size = 256 * 4
@@ -181,7 +179,7 @@ class BasicTests extends FunSuite with RandomGenerator {
         (s - s  % 4).toInt
       case None => -1
     }
-    println(f.path,f.size,fl_len,f.size)
+
     assert(fl_len >0 )
     val fi = f.bytes.drop(bucket_size)
     val fl:Array[Int] = new Array[Int](fl_len/4)
@@ -192,10 +190,61 @@ class BasicTests extends FunSuite with RandomGenerator {
     }
     //
     assert(Array(3,0,6,7,8,9,10,11,5,2,1,4).sameElements(fl))
-
+    
     f.delete()
     //var content = new String(ti.byteArray).replace('\0','$')
 
     //assert(content == "ard$rcaaaabb")
+  }
+
+  test("Naive SuffixAlgo test: occ/cf") {
+    val sa = new SAISBuilder(fromString("abracadabra"))
+    assert(sa.cf(0) == 0)
+    assert(sa.cf('a') == 1)
+    assert(sa.cf('b') == 6)
+    sa.build
+    assert(sa.BWT(0) == 'a' , "")
+    sa.buildOCC
+    /*
+    *** printSA
+     0 -> 11. $abracadabra
+     
+     1 -> 10. a$abracadabr  0
+     2 ->  7. abra$abracad  6
+     3 ->  0. abracadabra$  7
+     4 ->  3. acadabra$abr  8
+     5 ->  5. adabra$abrac  9
+
+     6 ->  8. bra$abracada
+     7 ->  1. bracadabra$a
+     8 ->  4. cadabra$abra
+     9 ->  6. dabra$abraca
+    10 ->  9. ra$abracadab
+    11 ->  2. racadabra$ab
+    */
+    assert(Array(3,0,6,7,8,9,10,11,5,2,1,4).sameElements(sa.OCC))
+    /*
+      a r d $ r c a a a a b b
+      0 1 2 3 4 5 6 7 8 9 0 1
+    $ 0 0 0 1 1 1 1 1 1 1 1 1
+    a 1 1 1 1 1 1 2 3 4 5 5 5
+    b 0 0 0 0 0 0 0 0 0 0 1 2
+    c 0 0 0 0 0 1 1 1 1 1 1 1
+    d 0 0 1 1 1 1 1 1 1 1 1 1
+    r 0 1 1 1 2 2 2 2 2 2 2 2
+    */
+   
+    def row(c:Byte) = for (i<-0 until sa.n) yield sa.occ(c,i) 
+
+    assert(Array(0,0,0,1,1,1,1,1,1,1,1,1).sameElements(row(0)))
+    assert(Array(1,1,1,1,1,1,2,3,4,5,5,5).sameElements(row('a')))    
+    assert(Array(0,0,0,0,0,0,0,0,0,0,1,2).sameElements(row('b')))
+    assert(Array(0,0,0,0,0,1,1,1,1,1,1,1).sameElements(row('c')))
+    assert(Array(0,0,1,1,1,1,1,1,1,1,1,1).sameElements(row('d')))
+    assert(Array(0,1,1,1,2,2,2,2,2,2,2,2).sameElements(row('r')))
+    assert(Array(0,0,0,0,0,0,0,0,0,0,0,0).sameElements(row('x')))
+
+    //assert(sa.occ(0,3)==1,"sa.occ(0,3)="+sa.occ(0,3))
+    //assert(sa.occ(0,4)==1,"sa.occ(0,3)="+sa.occ(0,4))
   }
 }

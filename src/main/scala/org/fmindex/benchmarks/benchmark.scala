@@ -98,7 +98,7 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
   // to make your benchmark depend on one or more parameterized values, create fields with the name you want
   // the parameter to be known by, and add this annotation (see @Param javadocs for more details)
   // caliper will inject the respective value at runtime and make sure to run all combinations
-  @Param(Array("10", "100", "1000", "5000","10000","20000"))
+  @Param(Array("10", "100", "1000", "5000","10000","20000","30000","40000","50000"))
   val length: Int = 0
 
   var is: Array[Byte] = _

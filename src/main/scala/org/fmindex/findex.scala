@@ -28,8 +28,8 @@ trait BWTBuilder[T] {
   val S:ArrayWrapper[T]
   val n:Int
   val SA: Array[Int]
+  def BWT(i:Int):T
   def build(): Array[Int]
-
 
   def arrayToString(s : Array[T]) : String
   def arrayToString(s : scala.collection.mutable.ArraySeq[T]):String
@@ -71,6 +71,7 @@ trait BWTBuilder[T] {
     }
   }
 }
+
 class NaiveIntBuilder(_s:Array[Int]) extends BWTBuilder[Int] {
   val S:IntArrayWrapper = new IntArrayWrapper(_s)
   val n:Int = _s.size
@@ -86,7 +87,11 @@ class NaiveIntBuilder(_s:Array[Int]) extends BWTBuilder[Int] {
     s.copyToArray(ts)
     arrayToString(ts)
   }
-
+  
+  def BWT(i:Int):Int = {
+    val pIdx = SA(i)-1
+    S((if (pIdx >= 0) pIdx else n-1) )
+  }
 
   val ZERO = Array(0:Int)
 
@@ -138,7 +143,10 @@ class NaiveBuilder(_s:Array[Byte]) extends BWTBuilder[Byte] {
     arrayToString(ts)
   }
 
-
+  def BWT(i:Int):Byte = {
+    val pIdx = SA(i)-1
+    S(if (pIdx >= 0) pIdx else n-1 ).toByte
+  }
   val ZERO = Array(0:Byte)
 
   def naiveIsSASorted(firstCount:Int=n):Boolean = {
@@ -303,6 +311,10 @@ class SAISIntBuilder(_s:Array[Int],_k:Int) extends SAISAlgo[Int] {
     cnt
   }
 
+  def BWT(i:Int):Int = {
+    val pIdx = SA(i)-1
+    S(if (pIdx >= 0) pIdx else n-1 )
+  }
 
   def arrayToString(s : Array[cType]) : String = s.mkString(",")
   def arrayToString(s : scala.collection.mutable.ArraySeq[cType]):String = {
@@ -449,7 +461,51 @@ class SAISIntBuilder(_s:Array[Int],_k:Int) extends SAISAlgo[Int] {
   }
 
 }
-class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] {
+
+trait NaiveSearcher extends SuffixAlgo[Byte] {
+  this: SAISAlgo[Byte] =>
+  var OCC:Array[Int] = _
+  def cf(c:Byte):Int = bucketStarts(c)
+  def occ(c:Byte,key:Int):Int = {
+    assert(SA(0)>=0,"Suffix Array not built")
+    if ( OCC == null) buildOCC
+    val istart = bucketStarts(c) 
+    var imin = istart
+    var imax = if ( c==K-1 ) n else bucketStarts(c+1)-1
+    if (imin <= imax) {
+      var found = false
+      var imid:Int = 0
+      var ival:Int = 0
+      while (! found && imax >= imin) {
+        imid = (imax+imin) / 2
+        ival = OCC(imid)
+        if (ival < key)
+          imin = imid + 1
+        else if (ival > key)
+          imax = imid - 1
+        else
+          found = true
+      }
+      if (ival <= key) (imid - istart+1) else (imid - istart ) 
+    } else 0
+    
+  }
+  
+  def buildOCC() {
+    assert(OCC==null,"OCC already exists")
+    assert(SA(0)>=0,"Suffix Array not built")
+    OCC = new Array[Int](n)
+    val bkt=bucketStarts.clone()
+    for ( i<- 0 until n) {
+      val c = BWT(i)
+      val j = bkt(c)
+      OCC(j)=i
+      bkt(c)=(j+1).toByte
+    }
+  }
+}
+
+class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
   type cType = Byte
   val S:ByteArrayWrapper = new ByteArrayWrapper(_s)
   val K = 256
@@ -462,6 +518,10 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] {
     cnt
   }
 
+  def BWT(i:Int):Byte = {
+    val pIdx = SA(i)-1
+    S(if (pIdx >= 0) pIdx else n-1 ).toByte
+  }
 
   def arrayToString(s : Array[cType]) : String = new String(s).replace('\0','$')
   def arrayToString(s : scala.collection.mutable.ArraySeq[cType]):String = {

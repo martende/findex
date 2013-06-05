@@ -133,7 +133,7 @@ class ExampleSuite extends FunSuite {
 
   test("bwt test") {
     val sa = new SuffixArray(fromString("abracadabra"))
-    val f = Path.fromString("/tmp/bwttest.txt")
+    val f = Path.fromString("/tmp/bwttest.txt.0")
     sa.build
     sa.writeBWTNative(f.path)
 
@@ -145,7 +145,7 @@ class ExampleSuite extends FunSuite {
 
   test("fl test") {
     val sa = new SuffixArray(fromString("abracadabra"))
-    val f = Path.fromString("/tmp/bwttest.fl")
+    val f = Path.fromString("/tmp/bwttest.fl.0")
     sa.build
     sa.writeFL(f.path)
 
@@ -157,7 +157,6 @@ class ExampleSuite extends FunSuite {
         (s - s  % 4).toInt
       case None => -1
     }
-    println(f.path,f.size,fl_len,f.size)
     assert(fl_len >0 )
     val fi = f.bytes.drop(bucket_size)
     val fl:Array[Int] = new Array[Int](fl_len/4)
