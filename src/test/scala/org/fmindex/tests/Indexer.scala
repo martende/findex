@@ -4,7 +4,6 @@ import org.scalatest.FunSuite
 import org.fmindex._
 import scalax.file.Path
 import scalax.io._
-import scalax.io.StandardOpenOption._
 
 
 class GSuite extends FunSuite {
@@ -233,11 +232,11 @@ class BasicTests extends FunSuite with RandomGenerator {
     d 0 0 1 1 1 1 1 1 1 1 1 1
     r 0 1 1 1 2 2 2 2 2 2 2 2
     */
-   
-    def row(c:Byte) = for (i<-0 until sa.n) yield sa.occ(c,i) 
+
+    def row(c:Byte) = for (i<-0 until sa.n) yield sa.occ(c,i)
 
     assert(Array(0,0,0,1,1,1,1,1,1,1,1,1).sameElements(row(0)))
-    assert(Array(1,1,1,1,1,1,2,3,4,5,5,5).sameElements(row('a')))    
+    assert(Array(1,1,1,1,1,1,2,3,4,5,5,5).sameElements(row('a')))
     assert(Array(0,0,0,0,0,0,0,0,0,0,1,2).sameElements(row('b')))
     assert(Array(0,0,0,0,0,1,1,1,1,1,1,1).sameElements(row('c')))
     assert(Array(0,0,1,1,1,1,1,1,1,1,1,1).sameElements(row('d')))
@@ -246,5 +245,47 @@ class BasicTests extends FunSuite with RandomGenerator {
 
     //assert(sa.occ(0,3)==1,"sa.occ(0,3)="+sa.occ(0,3))
     //assert(sa.occ(0,4)==1,"sa.occ(0,3)="+sa.occ(0,4))
+  }
+  test("plain searching") {
+    val sa = new SAISBuilder(fromString("abracadabra"))
+    sa.build
+    sa.buildOCC
+
+    sa.search("bra".getBytes()) match {
+      case None => assert(false,"bra not found")
+      case Some((6,8)) => // OK
+      case _ => assert(false ,"Bad answer")
+    }
+  }
+}
+
+
+class DFATests extends FunSuite with RandomGenerator {
+  def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
+
+  def `ab.*c` = {
+    val s = new StartState()
+    val a = new State("a")
+    val b = new State("b")
+    val f = new FinishState()
+    s.link(a,'a')
+    a.link(b,'b')
+    b.link(b,'b')
+    b.link(f,'c')
+    s
+  }
+  test("basic dfa search") {
+    // ab.*c
+    val dfa = DFA.processLinkList(`ab.*c`)
+    assert(dfa.matchString("absbc")==false)
+    assert(dfa.matchString("abbc"))
+    assert(dfa.matchString("abc"))
+  }
+  test("match SA basics") {
+    val sa = new SAISBuilder(fromString("abracadabra"))
+    sa.build
+    sa.buildOCC
+    val dfa = DFA.processLinkList(`ab.*c`)
+    dfa.matchSA(sa)
   }
 }

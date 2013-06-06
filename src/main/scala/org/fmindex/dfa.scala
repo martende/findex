@@ -1,4 +1,4 @@
-package scala.org.fmindex
+package org.fmindex
 
 
 class DFA(nstates:Int,nchars:Int) {
@@ -48,6 +48,13 @@ class DFA(nstates:Int,nchars:Int) {
   }
 
   def matchString(s:String):Boolean = matchString(s.getBytes)
+
+  def matchSA(s:SuffixAlgo):Boolean = {
+    var cur_state = 0
+    var statesFront = Set()
+    println(moves(cur_state).mkString(","))
+    true
+  }
 }
 
 case class Link(to:AnyState,chr:Int) {

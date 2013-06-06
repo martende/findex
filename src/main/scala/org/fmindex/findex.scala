@@ -4,22 +4,27 @@ import scalax.io._
 import scalax.file.Path
 import scalax.io.StandardOpenOption._
 
-trait SuffixAlgo[T] {
+trait SuffixAlgo {
   val n:Int
 
-  def cf(c:T):Int
-  def occ(c:T,i:Int):Int
+  def cf(c:Byte):Int
+  def occ(c:Byte,i:Int):Int
 
-  def search(in:Array[T]):Option[(Int,Int)] = {
-    var sp = 1
+  def search(in:Array[Byte]):Option[(Int,Int)] = {
+    var sp = 0
     var ep = n
     var i = in.length-1
+
     while ((sp<ep) && (i >= 0)) {
       val c  = in(i)
+      //printf("sp=%d ,ep=%d , i= %d c='%c'\n",sp,ep,i,c)
       i-=1
-      sp = cf(c) + occ(c,sp)
+      //printf("new sp=%d cf(%c)=%d occ(%c,%d-1)=%d\n",cf(c) + occ(c,sp - 1),c,cf(c),c,sp,occ(c,sp - 1))
+      //printf("new ep=%d cf(%c)=%d occ(%c,%d)=%d\n",cf(c) + occ(c,ep),c,cf(c),c,ep,occ(c,ep))
+      sp = cf(c) + occ(c,sp - 1)
       ep = cf(c) + occ(c,ep)
     }
+    //printf("sp=%d ,ep=%d , i= %d\n",sp,ep,i)
     if ( sp < ep ) Some((sp,ep)) else None
   }
 }
@@ -462,7 +467,7 @@ class SAISIntBuilder(_s:Array[Int],_k:Int) extends SAISAlgo[Int] {
 
 }
 
-trait NaiveSearcher extends SuffixAlgo[Byte] {
+trait NaiveSearcher extends SuffixAlgo {
   this: SAISAlgo[Byte] =>
   var OCC:Array[Int] = _
   def cf(c:Byte):Int = bucketStarts(c)
