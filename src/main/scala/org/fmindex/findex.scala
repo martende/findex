@@ -9,6 +9,8 @@ trait SuffixAlgo {
 
   def cf(c:Byte):Int
   def occ(c:Byte,i:Int):Int
+  
+  def nextSubstr(i:Int,len:Int):String
 
   def search(in:Array[Byte]):Option[(Int,Int)] = {
     var sp = 0
@@ -22,11 +24,17 @@ trait SuffixAlgo {
       //printf("new sp=%d cf(%c)=%d occ(%c,%d-1)=%d\n",cf(c) + occ(c,sp - 1),c,cf(c),c,sp,occ(c,sp - 1))
       //printf("new ep=%d cf(%c)=%d occ(%c,%d)=%d\n",cf(c) + occ(c,ep),c,cf(c),c,ep,occ(c,ep))
       sp = cf(c) + occ(c,sp - 1)
-      ep = cf(c) + occ(c,ep)
+      ep = cf(c) + occ(c,ep-1)
     }
     //printf("sp=%d ,ep=%d , i= %d\n",sp,ep,i)
     if ( sp < ep ) Some((sp,ep)) else None
   }
+  def getPrevRange(sp:Int,ep:Int,c:Byte):Option[(Int,Int)] = {
+    var sp1 = cf(c) + occ(c,sp - 1)
+    var ep1 = cf(c) + occ(c,ep-1)
+    if ( sp1 < ep1 ) Some((sp1,ep1)) else None
+  }
+  
 }
 
 trait BWTBuilder[T] {
@@ -505,7 +513,7 @@ trait NaiveSearcher extends SuffixAlgo {
       val c = BWT(i)
       val j = bkt(c)
       OCC(j)=i
-      bkt(c)=(j+1).toByte
+      bkt(c)=(j+1)
     }
   }
 }
@@ -516,6 +524,55 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
   val K = 256
   val n = _s.size
   val SA: Array[Int] = Array.fill[Int](n)(-1)
+
+
+  def getPrevI(i:Int) = {
+    val c = BWT(i)
+    cf(c) + occ(c,i - 1)
+  }
+  def getNextI(i:Int) = {
+    val c = BWT(i)
+    OCC(i)
+  }
+  def prevSubstr(sp:Int,len:Int):String = {
+    var cp = sp
+    var ret = new StringBuilder()
+    for ( i <- 0 until len) {
+      ret.append(BWT(cp).toChar)
+      cp = getPrevI(cp)
+    }
+    ret.reverse.result
+  }
+  /*
+                       BWT
+   0 -> 11. $abracadabra
+   1 -> 10. a$abracadabr
+   2 ->  7. abra$abracad
+   3 ->  0. abracadabra$
+   4 ->  3. acadabra$abr
+   5 ->  5. adabra$abrac
+   6 ->  8. bra$abracada
+   7 ->  1. bracadabra$a
+   8 ->  4. cadabra$abra
+   9 ->  6. dabra$abraca
+  10 ->  9. ra$abracadab
+  11 ->  2. racadabra$ab
+
+  nextSubstr(5,3) - gives 'ada'
+    first sym is S sym
+  prevSubstr(5,3) - rac 'rac'
+    first sym is BWT sym
+
+  */
+  def nextSubstr(sp:Int,len:Int):String = {
+    var cp = getNextI(sp)
+    var ret = new StringBuilder()
+    for ( i <- 0 until len) {
+      ret.append(BWT(cp).toChar)
+      cp = getNextI(cp)
+    }
+    ret.toString
+  }
 
   lazy val C:Array[Int] = {
     val cnt = new Array[Int](K)
