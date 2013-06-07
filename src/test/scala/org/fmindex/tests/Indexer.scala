@@ -406,6 +406,20 @@ class DFATests extends FunSuite with RandomGenerator {
 
 }
 
+class ReTest extends FunSuite with RandomGenerator {
+  test("nfa creation") {
+    val x = ReParser.parseItem("abc")
+    assert(x.nfa.dotDump == """digraph graphname {
+S -> 7  [label="eps"]
+6 -> F  [label="eps"]
+4 -> 6  [label="c"]
+7 -> 2  [label="a"]
+2 -> 4  [label="b"]
+}
+""")
+    
+  }
+}
 class BadTest extends FunSuite with RandomGenerator {
   test("Detailed test") {
     
