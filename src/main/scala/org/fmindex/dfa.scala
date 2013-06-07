@@ -183,7 +183,7 @@ trait AnyState {
   val name:String
   var dfaIdx:Int = -1
   var links = List[Link]()
-  def link(s:AnyState,chr:Int):Unit = links = links :+ Link(s,chr)
+  def link(s:AnyState,chr:Int):Unit = links = Link(s,chr) :: links
   override def toString = "["+name+"] Links=" + links.mkString(",")
 }
 
