@@ -1,58 +1,7 @@
 package org.fmindex
 import scala.util.parsing.combinator._
 
-object ReParser extends RegexParsers {
-  
-  
-  /// NFA
-  trait BaseNfaLink {
-    val to:NfaBaseState
-  }
-  case class EpsilonLink(val to:NfaBaseState) extends BaseNfaLink
-  case class NfaLink(val to:NfaBaseState,chr:Int) extends BaseNfaLink
-
-  class NfaBaseState {
-    NfaBaseState._idx+=1
-    val idx:Int = NfaBaseState._idx
-    def name:String = idx.toString
-
-    var links = List[BaseNfaLink]()
-    def link(s:NfaBaseState,chr:Int):Unit = links = NfaLink(s,chr) :: links
-    def epsilon(s:NfaBaseState) = links = links :+ EpsilonLink(s)
-    def dotDump():String = {
-      def _processLinkList(s:NfaBaseState,visited:Set[NfaBaseState]):Set[NfaBaseState] = {
-        var v = visited + s
-        for (l <- s.links if ! visited(l.to) ) {
-          v = v ++ _processLinkList(l.to,v)
-        }
-        v
-      }
-      val visited = _processLinkList(this,Set[NfaBaseState]())
-      
-      val ret = new StringBuilder()
-      
-      ret.append("digraph graphname {\n")
-      
-      for ( v <- visited;l<-v.links) l match {
-        case _:EpsilonLink => ret.append("%s -> %s  [label=\"eps\"]\n" format (v.name,l.to.name))
-        case ll:NfaLink    => ret.append("%s -> %s  [label=\"%c\"]\n" format (v.name,l.to.name,ll.chr))
-      }
-      ret append "}\n"
-      
-      ret.toString
-    }
-  }
-  object NfaBaseState {
-    var _idx:Int = 0
-  }
-
-  class NfaState extends NfaBaseState
-  class NfaStartState extends NfaBaseState {
-    override def name:String = "S"
-  }
-  class NfaFinishState extends NfaBaseState {
-    override def name:String = "F"
-  }
+object ReParser extends RegexParsers {  
 
   // Regexp parser NODES
 
@@ -63,7 +12,9 @@ object ReParser extends RegexParsers {
     def connect(next:Node) = {
       (this,next) match {
         case (f,t:Atom) => f.endState.link(t.startState,t.byte)
-        case (f,t) => println("NonConnect",f,t)
+        //case (f:Atom,t:LinkedNodes) => f.endState.epsilon(t.startState)
+        //case (f:Atom,t:LinkedNodes) => f.endState.epsilon(t.startState)
+        case (f,t) => f.endState.epsilon(t.startState)
       }
     }
   }
@@ -72,34 +23,112 @@ object ReParser extends RegexParsers {
     override lazy val startState:NfaBaseState = new NfaState()
     override lazy val endState:NfaBaseState = startState
   }
+  
+  class LinkEndNode extends Node {
+    override lazy val startState:NfaBaseState = new NfaState()
+    override lazy val endState:NfaBaseState = startState
+  }
 
   class Operator
   case class StarOperator extends Operator
   case class PlusOperator extends Operator
   case class QuestionOperator extends Operator
+  case class OrOperator extends Operator
 
   case class OppedNode(s:Node,op:Operator) extends Node {
-    override lazy val startState:NfaBaseState = new NfaState()
-    override lazy val endState:NfaBaseState = new NfaState()
+    
+    lazy val dummyStart = new LinkStartNode()
+    lazy val dummyEnd   = new LinkEndNode()
+
+    override lazy val startState:NfaBaseState = dummyStart.startState
+    override lazy val endState:NfaBaseState = dummyEnd.endState
+
+    connectNodes()
+    def connectNodes() {
+      println("connectNodes",startState.name,endState.name,s,s.startState.name,s.endState.name)
+      op match {
+        case _:StarOperator =>
+          dummyStart.connect(s)
+          dummyStart.connect(dummyEnd)
+          s.connect(dummyEnd)
+          dummyEnd.connect(dummyStart)
+        case _:PlusOperator =>
+          dummyStart.connect(s)
+          s.connect(dummyEnd)
+          dummyEnd.connect(dummyStart)
+        case _:QuestionOperator =>
+          dummyStart.connect(s)
+          dummyStart.connect(dummyEnd)
+          s.connect(dummyEnd)
+        case _ => 
+      }
+    }
   }
-  case class Atom(s:String) extends Node {
+  
+  abstract class BaseAtom extends Node
+
+  case class Atom(s:String) extends BaseAtom {
     def byte:Int = s.getBytes.apply(0) & 0xff
     override lazy val startState:NfaBaseState = new NfaState()
     override lazy val endState:NfaBaseState = startState
     //def connect(v:Node) 
   }
-  case class LinkedNodes(chain:List[Node]) extends Node {
-    lazy val dummy = new LinkStartNode()
+  
+  val charsRecognizedAsPunkt = List('a','b','c','d')
+  
+  case class AtomOR(allowedChars:List[Char]) extends BaseAtom {
+    lazy val dummyStart = new LinkStartNode()
+    lazy val dummyEnd   = new LinkEndNode()    
+    override lazy val startState:NfaBaseState = dummyStart.startState
+    override lazy val endState:NfaBaseState = dummyEnd.endState
+    for(c <- allowedChars) {
+      val n = Atom(c.toString)
+      dummyStart.connect(n)
+      n.connect(dummyEnd)
+    }
+  }
 
-    override lazy val startState:NfaBaseState = dummy.startState
-    override lazy val endState:NfaBaseState = chain.last.endState
+  case class LinkedNodes(chain:List[Node]) extends Node {
+    lazy val dummyStart = new LinkStartNode()
+    lazy val dummyEnd   = new LinkEndNode()
+
+    override lazy val startState:NfaBaseState = dummyStart.startState
+    override lazy val endState:NfaBaseState = dummyEnd.endState
 
     connectNodes()
-    def connectNodes() {
-      var cur = dummy :: chain
+    def splitORParts(chain:List[Node]) = {
+      var parts = List[List[Node]]()
+      var cur = chain
+      var orPart = List[Node]()
+      while ( ! cur.isEmpty ) {
+        cur.head match {
+          case OppedNode(v,_:OrOperator) => 
+            parts = (v :: orPart).reverse :: parts
+            orPart = List[Node]()
+          case _ => 
+            orPart = cur.head :: orPart
+        }
+        cur = cur.tail
+      }
+      parts = orPart.reverse :: parts
+      if (parts.exists {_.isEmpty}) throw new Exception("| as empty part")
+      parts
+    }
+    def connectConcatNodes(chain:List[Node]) {
+      var cur = chain
       while ( ! cur.tail.isEmpty ) {
         cur.head.connect(cur.tail.head)
         cur = cur.tail
+      }
+      cur.head.connect(dummyEnd)
+    }
+    def connectNodes() {
+      println("connectNodes",chain)
+      //var cur = dummy :: chain
+      var parts = splitORParts(chain)
+      println("parts=" + parts)
+      parts.foreach { x:List[Node] => 
+        connectConcatNodes(dummyStart :: x) 
       }
     }
   }
@@ -132,9 +161,10 @@ object ReParser extends RegexParsers {
   }
 //item | "(" ~ expr ~ ")" | item ~~ expr
   
-  def operator:Parser[Operator] = "*" ^^^ StarOperator() | "+" ^^^ PlusOperator() | "?" ^^^ QuestionOperator() // | """\{\d,\d\}""".r ^^^ anyOp
+  def operator:Parser[Operator] = "*" ^^^ StarOperator() | "+" ^^^ PlusOperator() | "?" ^^^ QuestionOperator() | "|" ^^^ OrOperator()// | """\{\d,\d\}""".r ^^^ anyOp
   def item:Parser[Node] = item0 ~ operator ^^ { case v ~ op => OppedNode(v,op)  } | item0
-  def item0:Parser[Atom] = atom ^^ Atom | quoted  ^^ Atom
+  def item0:Parser[BaseAtom] = "." ^^^ AtomOR(charsRecognizedAsPunkt) | atom ^^ Atom | quoted  ^^ Atom 
+  
   def atom:Parser[String] = "[a-z]".r 
   def quoted:Parser[String] = 
     "\\" ~> atom ^^ {
@@ -154,7 +184,7 @@ object ReParser extends RegexParsers {
 object RePlay extends optional.Application {
   def main() {
     var m = "ab(cd?e)+k(aaa)k*\\fkk(ssk)*"
-    m ="ab(d)c"
+    m ="m.*"
     println(m)
     val x = ReParser.parseItem(m)
     println(x)

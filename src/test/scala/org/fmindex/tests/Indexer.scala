@@ -407,18 +407,143 @@ class DFATests extends FunSuite with RandomGenerator {
 }
 
 class ReTest extends FunSuite with RandomGenerator {
+  def testRe(s:String,what:String) {
+    NfaBaseState._idx=0
+    var x = ReParser.parseItem(s)
+    val t = x.nfa.dotDump
+    assert(t == what,"Re " + s + " wait\n----\n" + what + "\n-----\nReceive:\n"+t)
+  }
   test("nfa creation") {
-    val x = ReParser.parseItem("abc")
-    assert(x.nfa.dotDump == """digraph graphname {
-S -> 7  [label="eps"]
-6 -> F  [label="eps"]
-4 -> 6  [label="c"]
-7 -> 2  [label="a"]
+    testRe("abc","""digraph graphname {
 2 -> 4  [label="b"]
+4 -> 6  [label="c"]
+6 -> 8  [label="eps"]
+7 -> 2  [label="a"]
+8 -> F  [label="eps"]
+S -> 7  [label="eps"]
 }
 """)
+    testRe("ab(d)c","""digraph graphname {
+10 -> F  [label="eps"]
+2 -> 4  [label="b"]
+4 -> 6  [label="d"]
+6 -> 8  [label="c"]
+8 -> 10  [label="eps"]
+9 -> 2  [label="a"]
+S -> 9  [label="eps"]
+}
+""")
+    testRe("a(bc)(de)","""digraph graphname {
+10 -> 12  [label="e"]
+12 -> 14  [label="eps"]
+13 -> 10  [label="d"]
+14 -> 16  [label="eps"]
+15 -> 2  [label="a"]
+16 -> F  [label="eps"]
+2 -> 7  [label="eps"]
+4 -> 6  [label="c"]
+6 -> 8  [label="eps"]
+7 -> 4  [label="b"]
+8 -> 13  [label="eps"]
+S -> 15  [label="eps"]
+}
+""")
+    testRe("a(b|ce|klm)d","""digraph graphname {
+12 -> 14  [label="l"]
+14 -> 16  [label="m"]
+16 -> 18  [label="eps"]
+17 -> 12  [label="k"]
+17 -> 3  [label="b"]
+17 -> 7  [label="c"]
+18 -> 20  [label="d"]
+2 -> 17  [label="eps"]
+20 -> 22  [label="eps"]
+21 -> 2  [label="a"]
+22 -> F  [label="eps"]
+3 -> 18  [label="eps"]
+7 -> 8  [label="e"]
+8 -> 18  [label="eps"]
+S -> 21  [label="eps"]
+}
+""")
+    testRe("a(bbbb|cc(c|d)c)d","""digraph graphname {
+13 -> 15  [label="c"]
+15 -> 21  [label="eps"]
+16 -> 22  [label="eps"]
+2 -> 25  [label="eps"]
+20 -> 22  [label="eps"]
+21 -> 16  [label="c"]
+21 -> 20  [label="d"]
+22 -> 24  [label="c"]
+24 -> 26  [label="eps"]
+25 -> 13  [label="c"]
+25 -> 4  [label="b"]
+26 -> 28  [label="d"]
+28 -> 30  [label="eps"]
+29 -> 2  [label="a"]
+30 -> F  [label="eps"]
+4 -> 6  [label="b"]
+6 -> 8  [label="b"]
+8 -> 9  [label="b"]
+9 -> 26  [label="eps"]
+S -> 29  [label="eps"]
+}
+""")
+    // testRe("a(b|c)+d","")
+    // testRe("a(b|c)*d","")
+    // testRe("a(b|c)?d","")
+  }
+}
+class NFATest extends FunSuite with RandomGenerator {
+  test("transitions1") {
+    val s = new NfaStartState()
+    val l1 = new NfaState()
+    val l2 = new NfaState()
+    val l3 = new NfaState()
+    val l4 = new NfaState()
+    val l5 = new NfaState()
+    val l6 = new NfaState()
+    s.epsilon(l1)
+    s.epsilon(l2)
+    l2.epsilon(l3)
+    l3.epsilon(s)
+    l1.link(l4,'b')
+    l1.link(l5,'a')
+    l2.link(l6,'a')
+    l3.link(l6,'b')
+    assert(s.epsilons.sameElements(Set(s,l1,l2,l3)))    
+    // Map(98 -> Set(NfaBaseState(5), NfaBaseState(7)), 97 -> Set(NfaBaseState(6), NfaBaseState(7)))
+    val et = s.epsilonTransitions
+    assert(et('a').sameElements(Set(l5,l6)))
+    assert(et('b').sameElements(Set(l4,l6)))
+  }
+  
+  test("transitions2") {
+    val s = new NfaStartState()
+    val l1 = new NfaState()
+    val l2 = new NfaState()
+    val l3 = new NfaState()
+    val l4 = new NfaState()
+    val l5 = new NfaState()
+    val l6 = new NfaState()
+    val l7 = new NfaState()
+    s.epsilon(l1)
+    s.epsilon(l2)
+    l2.epsilon(l3)
+    l3.epsilon(s)
+    l1.link(l4,'b')
+    l1.link(l5,'a')
+    l2.link(l6,'a')
+    l3.link(l6,'b')
+    l6.link(l7,'c')
+    assert(NFA.epsilons(Set(s,l2)).sameElements(s.epsilons))
+    val et = NFA.epsilonTransitions(Set(s,l2,l6))
+    assert(et('a').size==2)
+    assert(et('b').size==2)
+    assert(et('c').size==1)
     
   }
+  
 }
 class BadTest extends FunSuite with RandomGenerator {
   test("Detailed test") {

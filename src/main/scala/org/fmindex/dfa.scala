@@ -1,6 +1,87 @@
 package org.fmindex
+import scala.collection.immutable.Queue
 
+  /// NFA
+  trait BaseNfaLink {
+    val to:NfaBaseState
+  }
+  case class EpsilonLink(val to:NfaBaseState) extends BaseNfaLink
+  case class NfaLink(val to:NfaBaseState,chr:Int) extends BaseNfaLink
 
+  class NfaBaseState {
+    NfaBaseState._idx+=1
+    val idx:Int = NfaBaseState._idx
+    def name:String = idx.toString
+    override def toString = "NfaBaseState("+name+")"
+    var links = List[BaseNfaLink]()
+    def epsilons = {
+      def _processLinkList(s:NfaBaseState,visited:Set[NfaBaseState]):Set[NfaBaseState] = {
+        var v = visited + s
+        for (l <- s.links if l.isInstanceOf[EpsilonLink] && ! visited(l.to) ) {
+          v = v ++ _processLinkList(l.to,v)
+        }
+        v
+      }
+      _processLinkList(this,Set[NfaBaseState]())
+    }
+    def epsilonTransitions:Map[Int,Set[NfaBaseState]] = {
+      val t0 = ( for { s <- epsilons ; l <- s.links if ! l.isInstanceOf[EpsilonLink] } yield l match {
+          //case _:EpsilonLink => None
+          case NfaLink(s,chr) => chr -> s.epsilons
+      } ) 
+
+      t0.groupBy(_._1).mapValues(x => x.map(_._2).reduceLeft( (a,b) => { a ++ b } ) )
+
+    }
+    def link(s:NfaBaseState,chr:Int):Unit = links = NfaLink(s,chr) :: links
+    def epsilon(s:NfaBaseState) = links = links :+ EpsilonLink(s)
+    def dotDump():String = {
+      def _processLinkList(s:NfaBaseState,visited:Set[NfaBaseState]):Set[NfaBaseState] = {
+        var v = visited + s
+        for (l <- s.links if ! visited(l.to) ) {
+          v = v ++ _processLinkList(l.to,v)
+        }
+        v
+      }
+      val visited = _processLinkList(this,Set[NfaBaseState]())
+      
+      val ret = new StringBuilder()
+      var iret = List[String]()
+      ret.append("digraph graphname {\n")
+      for ( v <- visited;l<-v.links) l match {
+        case _:EpsilonLink => iret  = ("%s -> %s  [label=\"eps\"]\n" format (v.name,l.to.name)) :: iret 
+        case ll:NfaLink    =>  iret  = ("%s -> %s  [label=\"%c\"]\n" format (v.name,l.to.name,ll.chr)) :: iret 
+      }
+      for (s <- iret.sorted) ret append s
+      ret append "}\n"
+      
+      ret.toString
+    }
+  }
+  object NfaBaseState {
+    var _idx:Int = 0
+  }
+
+  class NfaState extends NfaBaseState
+  class NfaStartState extends NfaBaseState {
+    override def name:String = "S"
+  }
+  class NfaFinishState extends NfaBaseState {
+    override def name:String = "F"
+  }
+
+object NFA {
+  def epsilons(s:Set[NfaBaseState]) = for {  e <- s ; s <- e.epsilons  } yield s
+  def epsilonTransitions(ss:Set[NfaBaseState]):Map[Int,Set[NfaBaseState]] = {
+      val t0 = ( for { s <- epsilons(ss) ; l <- s.links if ! l.isInstanceOf[EpsilonLink] } yield l match {
+          //case _:EpsilonLink => None
+          case NfaLink(s,chr) => chr -> s.epsilons
+      } ) 
+
+      t0.groupBy(_._1).mapValues(x => x.map(_._2).reduceLeft( (a,b) => { a ++ b } ) )
+
+    }
+}
 class DFA(nstates:Int,nchars:Int) {
   val moves:Array[Array[Int]] = Array.fill(nstates)(Array.fill(nchars)(-1))
   // Same as moves but linked in buckets
@@ -202,6 +283,37 @@ class FinishState extends AnyState {
 
 object DFA {
   type tStateSet = Set[AnyState]
+
+
+
+  def fromNFA(initialState:NfaBaseState):DFA = {
+    val init = Set(initialState)
+
+    def psc(ts:Map[(Set[NfaBaseState],Byte),Set[NfaBaseState]],q: Queue[Set[NfaBaseState]]):DFA =  q match {
+      case Queue() => { // nothing more to do but to set up the DFA
+        //val fs = ts.values.toSet filter { _ exists { finalStates contains } }
+        val s = new StartState()
+        val dfa = DFA.processLinkList(s)
+        //DeterministicFiniteAutomaton(init, fs, ts)
+        dfa
+      }
+      case _ => {
+        val (elementset, rest) = q.dequeue
+        //val nfaState
+        val dfaStateSet = NFA.epsilons(elementset)
+        val transitions = NFA.epsilonTransitions(elementset)
+        
+        println("dfaStateSet",dfaStateSet)
+        println("transitions",transitions)
+
+        val sumts = ts // ++ epsilons
+
+        psc(sumts, rest/* enqueue unhandledStates*/)
+      }
+    }
+    psc(Map(), Queue(init))
+  }
+
   def processLinkList(s:StartState) = {
     def _processLinkList(s:AnyState,visited:tStateSet):tStateSet = {
       var v = visited + s
@@ -221,9 +333,9 @@ object DFA {
   }
 }
 
-/*
+
 object DFAPlay extends optional.Application {
-  def main() {
+/*  def main() {
     val s = new StartState()
     val a = new State("a")
     val b = new State("b")
@@ -236,5 +348,27 @@ object DFAPlay extends optional.Application {
     val dfa = DFA.processLinkList(s)
     println("MAtch = " , dfa.matchString("absbc"))
   }
+  */
+
+  def main() {
+    var m = "ab(cd?e)+k(aaa)k*\\fkk(ssk)*"
+    //m ="m.*"
+    m="a*d"
+    val x = ReParser.parseItem(m)
+    val dotDump = x.nfa.dotDump
+    
+    println(dotDump)
+    
+    val output = new java.io.FileOutputStream("/tmp/file.dot")
+    output.write(dotDump.getBytes)
+    output.close()
+
+    //Resource.fromFile("/tmp/file.dot").write(dotDump)
+
+    Runtime.getRuntime.exec("dotty /tmp/file.dot")
+    
+    val dfa = DFA.fromNFA(x.nfa)
+    
+  }
+
 }
-*/
