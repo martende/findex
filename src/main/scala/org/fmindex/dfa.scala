@@ -292,10 +292,23 @@ object DFA {
     def psc(ts:Map[(Set[NfaBaseState],Int),Set[NfaBaseState]],q: Queue[Set[NfaBaseState]]):DFA =  q match {
       case Queue() => { // nothing more to do but to set up the DFA
         //val fs = ts.values.toSet filter { _ exists { finalStates contains } }
-        val s = new StartState()
-        val dfa = DFA.processLinkList(s)
+        val startState = new StartState()
+        
         //DeterministicFiniteAutomaton(init, fs, ts)
-        dfa
+        val initialStateSet = NFA.epsilons(Set(initialState))
+        def createDfaState(x:Set[NfaBaseState]) = 
+          if (x == initialStateSet ) startState
+          else if (x exists { _.isInstanceOf[NfaFinishState]} ) new FinishState() 
+          else new State("x")
+
+        val states = ((( ts.keySet map { _._1 } ) ++ ts.values.toSet ) map 
+          { x => x -> createDfaState(x) }).toMap
+
+        for ( (k,endState) <- ts ; (startState,transition) = k) {
+          println(startState,transition,endState)
+          states(startState).link(states(endState),transition)
+        }
+        DFA.processLinkList(startState)
       }
       case _ => {
         val (elementset, rest) = q.dequeue
@@ -303,13 +316,21 @@ object DFA {
         val dfaStateSet = NFA.epsilons(elementset)
         val transitions:Map[Int,Set[NfaBaseState]] = NFA.epsilonTransitions(elementset)
         val newts = for { t <- transitions } yield (dfaStateSet,t._1) -> t._2
-        println("dfaStateSet",dfaStateSet)
-        println("transitions",transitions)
-        println("newts",newts)
-
+        //println("dfaStateSet",dfaStateSet)
+        //println("transitions",transitions)
+        //println("newts",newts)
         val sumts = ts ++ newts
 
-        psc(sumts, rest/* enqueue unhandledStates*/)
+        val unhandledStates = newts.values.toSet diff {
+          sumts.keySet map { _._1 }
+        }
+        /*
+        println("unhandledStates1",unhandledStates)
+        println("unhandledStates2",summts.keySet map {_._1 })
+        */
+        
+
+        psc(sumts, rest enqueue unhandledStates)
       }
     }
     psc(Map(), Queue(init))
@@ -354,7 +375,7 @@ object DFAPlay extends optional.Application {
   def main() {
     var m = "ab(cd?e)+k(aaa)k*\\fkk(ssk)*"
     //m ="m.*"
-    m="a*d"
+    m="aa*d"
     val x = ReParser.parseItem(m)
     val dotDump = x.nfa.dotDump
     
@@ -369,6 +390,8 @@ object DFAPlay extends optional.Application {
     Runtime.getRuntime.exec("dotty /tmp/file.dot")
     
     val dfa = DFA.fromNFA(x.nfa)
+    var b = dfa.buckets
+    dfa.dumpBuckets()    
     
   }
 
