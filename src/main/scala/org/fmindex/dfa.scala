@@ -289,7 +289,7 @@ object DFA {
   def fromNFA(initialState:NfaBaseState):DFA = {
     val init = Set(initialState)
 
-    def psc(ts:Map[(Set[NfaBaseState],Byte),Set[NfaBaseState]],q: Queue[Set[NfaBaseState]]):DFA =  q match {
+    def psc(ts:Map[(Set[NfaBaseState],Int),Set[NfaBaseState]],q: Queue[Set[NfaBaseState]]):DFA =  q match {
       case Queue() => { // nothing more to do but to set up the DFA
         //val fs = ts.values.toSet filter { _ exists { finalStates contains } }
         val s = new StartState()
@@ -301,12 +301,13 @@ object DFA {
         val (elementset, rest) = q.dequeue
         //val nfaState
         val dfaStateSet = NFA.epsilons(elementset)
-        val transitions = NFA.epsilonTransitions(elementset)
-        
+        val transitions:Map[Int,Set[NfaBaseState]] = NFA.epsilonTransitions(elementset)
+        val newts = for { t <- transitions } yield (dfaStateSet,t._1) -> t._2
         println("dfaStateSet",dfaStateSet)
         println("transitions",transitions)
+        println("newts",newts)
 
-        val sumts = ts // ++ epsilons
+        val sumts = ts ++ newts
 
         psc(sumts, rest/* enqueue unhandledStates*/)
       }
