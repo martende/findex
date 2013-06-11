@@ -841,6 +841,7 @@ object IndexMaker {
           out.write(buf1, 0, j)
           len = fs.read(buf0)
         }
+        fs.close
         out.write(EOF)
       } catch  {
         case e:java.io.FileNotFoundException =>
@@ -910,7 +911,10 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
     def make(dir:String,recursive:Boolean=true) = {
         val files = recursiveListFiles(new File(dir))
         val buf = new java.io.ByteArrayOutputStream()
-        val BUFLEN = 1024*1024*50
+        /*
+        time  1024*1024*50 = 1m54.985s
+        */
+        val BUFLEN = 1024*1024*100
         var start = false
         printMemUsage
         
