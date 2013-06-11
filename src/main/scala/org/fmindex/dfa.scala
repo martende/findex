@@ -48,9 +48,22 @@ import scala.collection.immutable.Queue
       val ret = new StringBuilder()
       var iret = List[String]()
       ret.append("digraph graphname {\n")
+      def isAllDigits(x: String) = x forall Character.isDigit
+      val min = visited.foldLeft(-1)((a,b) => {val x = b.name
+        if (isAllDigits(x)) {
+          val n = x.toInt
+          if ( a == -1 || n < a ) n else a
+        } else a
+      })
+
+      def parsed(x:String):String = if (isAllDigits(x)) {
+        (x.toInt-min).toString
+      } else {
+        x
+      }
       for ( v <- visited;l<-v.links) l match {
-        case _:EpsilonLink => iret  = ("%s -> %s  [label=\"eps\"]\n" format (v.name,l.to.name)) :: iret 
-        case ll:NfaLink    =>  iret  = ("%s -> %s  [label=\"%c\"]\n" format (v.name,l.to.name,ll.chr)) :: iret 
+        case _:EpsilonLink => iret  = ("%s -> %s  [label=\"eps\"]\n" format ( parsed(v.name) , parsed(l.to.name) ) ) :: iret 
+        case ll:NfaLink    =>  iret  = ("%s -> %s  [label=\"%c\"]\n" format ( parsed(v.name) , parsed(l.to.name) ,ll.chr ) ) :: iret 
       }
       for (s <- iret.sorted) ret append s
       ret append "}\n"

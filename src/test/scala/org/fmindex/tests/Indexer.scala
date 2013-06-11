@@ -426,86 +426,86 @@ class DFATests extends FunSuite with RandomGenerator {
 }
 
 class ReTest extends FunSuite with RandomGenerator {
+  /*
   def testRe(s:String,what:String) {
-    NfaBaseState._idx=0
     var x = ReParser.parseItem(s)
     val t = x.nfa.dotDump
     assert(t == what,"Re " + s + " wait\n----\n" + what + "\n-----\nReceive:\n"+t)
   }
   test("nfa creation") {
     testRe("abc","""digraph graphname {
-2 -> 4  [label="b"]
+0 -> 2  [label="b"]
+2 -> 4  [label="c"]
+4 -> 6  [label="eps"]
+5 -> 0  [label="a"]
+6 -> F  [label="eps"]
+S -> 5  [label="eps"]
+}
+""")
+    testRe("ab(d)c","""digraph graphname {
+0 -> 2  [label="b"]
+2 -> 4  [label="d"]
 4 -> 6  [label="c"]
 6 -> 8  [label="eps"]
-7 -> 2  [label="a"]
+7 -> 0  [label="a"]
 8 -> F  [label="eps"]
 S -> 7  [label="eps"]
 }
 """)
-    testRe("ab(d)c","""digraph graphname {
-10 -> F  [label="eps"]
-2 -> 4  [label="b"]
-4 -> 6  [label="d"]
-6 -> 8  [label="c"]
-8 -> 10  [label="eps"]
-9 -> 2  [label="a"]
-S -> 9  [label="eps"]
-}
-""")
     testRe("a(bc)(de)","""digraph graphname {
-10 -> 12  [label="e"]
+0 -> 5  [label="eps"]
+10 -> 12  [label="eps"]
+11 -> 8  [label="d"]
 12 -> 14  [label="eps"]
-13 -> 10  [label="d"]
-14 -> 16  [label="eps"]
-15 -> 2  [label="a"]
-16 -> F  [label="eps"]
-2 -> 7  [label="eps"]
-4 -> 6  [label="c"]
-6 -> 8  [label="eps"]
-7 -> 4  [label="b"]
-8 -> 13  [label="eps"]
-S -> 15  [label="eps"]
+13 -> 0  [label="a"]
+14 -> F  [label="eps"]
+2 -> 4  [label="c"]
+4 -> 6  [label="eps"]
+5 -> 2  [label="b"]
+6 -> 11  [label="eps"]
+8 -> 10  [label="e"]
+S -> 13  [label="eps"]
 }
 """)
     testRe("a(b|ce|klm)d","""digraph graphname {
-12 -> 14  [label="l"]
-14 -> 16  [label="m"]
+0 -> 13  [label="eps"]
+1 -> 14  [label="eps"]
+10 -> 12  [label="m"]
+12 -> 14  [label="eps"]
+13 -> 1  [label="b"]
+13 -> 4  [label="c"]
+13 -> 8  [label="k"]
+14 -> 16  [label="d"]
 16 -> 18  [label="eps"]
-17 -> 12  [label="k"]
-17 -> 3  [label="b"]
-17 -> 7  [label="c"]
-18 -> 20  [label="d"]
-2 -> 17  [label="eps"]
-20 -> 22  [label="eps"]
-21 -> 2  [label="a"]
-22 -> F  [label="eps"]
-3 -> 18  [label="eps"]
-7 -> 8  [label="e"]
-8 -> 18  [label="eps"]
-S -> 21  [label="eps"]
+17 -> 0  [label="a"]
+18 -> F  [label="eps"]
+4 -> 5  [label="e"]
+5 -> 14  [label="eps"]
+8 -> 10  [label="l"]
+S -> 17  [label="eps"]
 }
 """)
     testRe("a(bbbb|cc(c|d)c)d","""digraph graphname {
-13 -> 15  [label="c"]
-15 -> 21  [label="eps"]
-16 -> 22  [label="eps"]
-2 -> 25  [label="eps"]
+0 -> 21  [label="eps"]
+10 -> 12  [label="c"]
+12 -> 17  [label="eps"]
+13 -> 18  [label="eps"]
+16 -> 18  [label="eps"]
+17 -> 13  [label="c"]
+17 -> 16  [label="d"]
+18 -> 20  [label="c"]
+2 -> 4  [label="b"]
 20 -> 22  [label="eps"]
-21 -> 16  [label="c"]
-21 -> 20  [label="d"]
-22 -> 24  [label="c"]
+21 -> 10  [label="c"]
+21 -> 2  [label="b"]
+22 -> 24  [label="d"]
 24 -> 26  [label="eps"]
-25 -> 13  [label="c"]
-25 -> 4  [label="b"]
-26 -> 28  [label="d"]
-28 -> 30  [label="eps"]
-29 -> 2  [label="a"]
-30 -> F  [label="eps"]
+25 -> 0  [label="a"]
+26 -> F  [label="eps"]
 4 -> 6  [label="b"]
-6 -> 8  [label="b"]
-8 -> 9  [label="b"]
-9 -> 26  [label="eps"]
-S -> 29  [label="eps"]
+6 -> 7  [label="b"]
+7 -> 22  [label="eps"]
+S -> 25  [label="eps"]
 }
 """)
     // testRe("a(b|c)+d","")
@@ -562,9 +562,226 @@ class NFATest extends FunSuite with RandomGenerator {
     assert(et('c').size==1)
     
   }
-  
+  */
 }
 class BadTest extends FunSuite with RandomGenerator {
   
+
+}
+
+class RE2Parser  extends FunSuite with RandomGenerator {
+  import org.fmindex.re2._
+  test("re2post") {
+    val r = REParser.re2post("abc")
+    assert(r=="ab.c.","r="+r)
+  }
+  test("re2post2") {
+    val r = REParser.re2post("a(bb)+a")
+    assert(r=="abb.+.a.","r="+r)
+  }
+  test("re2post3") {
+    val r = REParser.re2post("(a|b)")
+    assert(r=="ab|","r="+r)
+  }
+  test("re2post4") {
+    val r = REParser.re2post("((a|b)*aba*)*(a|b)(a|b)")
+    
+    assert(r=="ab|*a.b.a*.*ab|.ab|.","r="+r)
+  }
+  test("createNFA") {
+    var nfa = REParser.createNFA("ab.c.")
+    nfa match {
+      case REParser.ConstState('a',out) => 
+        nfa = out.s
+      case _ => assert(false)
+    }
+    nfa match {
+      case REParser.ConstState('b',out) => 
+        nfa = out.s
+      case _ => assert(false)
+    }
+    nfa match {
+      case REParser.ConstState('c',out) => 
+        nfa = out.s
+      case _ => assert(false)
+    }
+    nfa match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+  }
+  
+  test("orNFA") {
+    var nfa = REParser.createNFA("ab|c.")
+
+    var (out1,out2) = nfa match {
+      case REParser.SplitState(out1,out2) => 
+        (out1.s,out2.s)
+      case _ => assert(false)
+    }
+    
+    out1 = out1 match {
+      case REParser.ConstState('a',out) => 
+        out.s
+      case _ => assert(false)
+    }
+    out2 = out2 match {
+      case REParser.ConstState('b',out) => 
+        out.s
+      case _ => assert(false)
+    }
+
+    out1 = out1 match {
+      case REParser.ConstState('c',out) => 
+        out.s
+      case _ => assert(false)
+    }
+
+    out2 = out2 match {
+      case REParser.ConstState('c',out) => 
+        out.s
+      case _ => assert(false)
+    }
+
+    out1 match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+  }
+  test("plusNFA") {
+    var out1 = REParser.createNFA("a+")
+
+
+    var out2 = out1 match {
+      case REParser.ConstState('a',out) => 
+        out.s
+      case _ => assert(false)
+    }
+
+    var (out3,out4) = out2 match {
+      case REParser.SplitState(out1,out2) => 
+        (out1.s,out2.s)
+      case _ => assert(false)
+    }
+    
+    out1 = out3 match {
+      case REParser.ConstState('a',out) => 
+        out.s
+      case _ => assert(false)
+        ???
+    }
+    
+    out4 match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+  }
+  
+  test("starNFA") {
+    var out1 = REParser.createNFA("a*")
+
+    var (out2,out3) = out1 match {
+      case REParser.SplitState(out1,out2) => 
+        (out1.s,out2.s)
+      case _ => assert(false)
+    }
+
+    out2 = out2 match {
+      case REParser.ConstState('a',out) => 
+        out.s
+      case _ => assert(false)
+        ???
+    }
+
+    out3 match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+    
+    out2 match {
+      case REParser.SplitState(out1,out2) => 
+        (out1.s,out2.s)
+      case _ => assert(false)
+    }
+
+  }
+
+  test("questionNFA") {
+    var out1 = REParser.createNFA("a?")
+
+    var (out2,out3) = out1 match {
+      case REParser.SplitState(out1,out2) => 
+        (out1.s,out2.s)
+      case _ => assert(false)
+    }
+
+    out2 = out2 match {
+      case REParser.ConstState('a',out) => 
+        out.s
+      case _ => assert(false)
+        ???
+    }
+
+    out3 match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+    
+    out2 match {
+      case REParser.MatchState => 
+      case _ => assert(false)
+    }
+
+  }
+
+  test("matchString1") {
+    var re1 = REParser.createNFA("ab.c.")
+    assert(REParser.matchNFA(re1,"abc")==true)
+    assert(REParser.matchNFA(re1,"atc")==false)
+  }
+
+  test("matchString2") {
+    var re1 = REParser.createNFA("am|c.")
+    assert(REParser.matchNFA(re1,"ac")==true)
+    assert(REParser.matchNFA(re1,"mc")==true)
+    assert(REParser.matchNFA(re1,"Xc")==false)
+    assert(REParser.matchNFA(re1,"c")==false)
+  }
+
+  test("matchString3") {
+    val re = "(a|m)c"
+    assert(REParser.matchString(re,"ac")==true)
+    assert(REParser.matchString(re,"mc")==true)
+    assert(REParser.matchString(re,"Xc")==false)
+    assert(REParser.matchString(re,"c")==false)
+  }
+
+  test("matchString4") {
+    val re = "a*b?c+"
+    assert(REParser.matchString(re,"abc")==true)
+    assert(REParser.matchString(re,"bc")==true)
+    assert(REParser.matchString(re,"bcc")==true)
+    assert(REParser.matchString(re,"aaabc")==true)
+  }
+
+
+  test("match SA basics") {
+    val sa = new SAISBuilder(fromString("mmabcacadabbbca".reverse))
+    sa.build
+    sa.buildOCC
+    sa.printSA()
+    var re1 = REParser.createNFA("mm.a.")
+    val results = ReParser.matchSA(re1,sa)
+
+    /*
+    val dfa = DFA.processLinkList(`ab*c`)
+    
+    assert(results.size == 2)
+    assert(results(0).toString=="cbbba")
+    assert(results(1).toString=="cba")
+    assert(sa.nextSubstr(results(1).sp,results(1).len)=="cba","sa.nextSubstr(results(1).sp,results(1).len)="+sa.nextSubstr(results(1).sp,results(1).len))
+    assert(sa.nextSubstr(results(0).sp,results(0).len)=="cbbba")
+    */
+  }
 
 }
