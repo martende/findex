@@ -57,6 +57,17 @@ import scala.collection.immutable.Queue
       
       ret.toString
     }
+    def showGraph(dump:Boolean=true) {
+      if (dump)
+        println("nfaDump:\n"+dotDump+"-----\n")
+      val output = new java.io.FileOutputStream("/tmp/nfa.dot")
+      output.write(dotDump.getBytes)
+      output.close()
+      //Resource.fromFile("/tmp/file.dot").write(dotDump)
+      Runtime.getRuntime.exec("dotty /tmp/nfa.dot")
+    }
+    
+    
   }
   object NfaBaseState {
     var _idx:Int = 0
@@ -112,6 +123,15 @@ class DFA(nstates:Int,nchars:Int) {
         s.dfaIdx = _stateIdx
         _stateIdx+=1
     }
+  }
+  def showGraph(dump:Boolean=true) {
+    val dd =_startState.dotDump
+    if ( dump) println("DFA Dump:\n"+dd+"-------")
+    val output = new java.io.FileOutputStream("/tmp/file.dot")
+    output.write(dd.getBytes)
+    output.close()
+    //Resource.fromFile("/tmp/file.dot").write(dotDump)
+    Runtime.getRuntime.exec("dotty /tmp/file.dot")
   }
   def addLink(from:AnyState,to:AnyState,chr:Int) {
     assert(from.dfaIdx >= 0,"Start State not in DFA")
@@ -265,10 +285,34 @@ trait AnyState {
   var dfaIdx:Int = -1
   var links = List[Link]()
   def link(s:AnyState,chr:Int):Unit = links = Link(s,chr) :: links
-  override def toString = "["+name+"] Links=" + links.mkString(",")
+  //override def toString = "["+name+"] Links=" + links.mkString(",")
+  override def toString = "[[ ("+name+") Links=" + links.mkString(",")+"]]"
+
+  def dotDump():String = {
+      def _processLinkList(s:AnyState,visited:Set[AnyState]):Set[AnyState] = {
+        var v = visited + s
+        for (l <- s.links if ! visited(l.to) ) {
+          v = v ++ _processLinkList(l.to,v)
+        }
+        v
+      }
+      val visited = _processLinkList(this,Set[AnyState]())
+      
+      val ret = new StringBuilder()
+      var iret = List[String]()
+      ret.append("digraph graphname {\n")
+      for ( v <- visited;l<-v.links) {
+         iret  = ("%s -> %s  [label=\"%c\"]\n" format (v.name,l.to.name,l.chr)) :: iret 
+      }
+      for (s <- iret.sorted) ret append s
+      ret append "}\n"
+      
+      ret.toString
+    }
 }
 
-case class State(name:String) extends AnyState {
+class State(override val name:String="x") extends AnyState {
+
 }
 
 class StartState extends AnyState {
@@ -277,7 +321,7 @@ class StartState extends AnyState {
 
 class FinishState extends AnyState {
   val name = "END"
-  override def link(s:AnyState,chr:Int) = assert(false,"Cant add link to Finish state")
+  //override def link(s:AnyState,chr:Int) = assert(false,"Cant add link to Finish state")
   override def toString = "[*"+name+"]"
 }
 
@@ -296,16 +340,20 @@ object DFA {
         
         //DeterministicFiniteAutomaton(init, fs, ts)
         val initialStateSet = NFA.epsilons(Set(initialState))
+        var idx = 0
         def createDfaState(x:Set[NfaBaseState]) = 
           if (x == initialStateSet ) startState
           else if (x exists { _.isInstanceOf[NfaFinishState]} ) new FinishState() 
-          else new State("x")
+          else {
+            idx+=1
+            new State(idx.toString)
+          }
 
         val states = ((( ts.keySet map { _._1 } ) ++ ts.values.toSet ) map 
           { x => x -> createDfaState(x) }).toMap
 
         for ( (k,endState) <- ts ; (startState,transition) = k) {
-          println(startState,transition,endState)
+          //println(startState,transition,endState)
           states(startState).link(states(endState),transition)
         }
         DFA.processLinkList(startState)
@@ -375,24 +423,16 @@ object DFAPlay extends optional.Application {
   def main() {
     var m = "ab(cd?e)+k(aaa)k*\\fkk(ssk)*"
     //m ="m.*"
-    m="aa*d"
+    m="((ab.*)|abbb)"
     val x = ReParser.parseItem(m)
-    val dotDump = x.nfa.dotDump
-    
-    println(dotDump)
-    
-    val output = new java.io.FileOutputStream("/tmp/file.dot")
-    output.write(dotDump.getBytes)
-    output.close()
-
-    //Resource.fromFile("/tmp/file.dot").write(dotDump)
-
-    Runtime.getRuntime.exec("dotty /tmp/file.dot")
+    //x.nfa.showGraph()
     
     val dfa = DFA.fromNFA(x.nfa)
+    //dfa.showGraph()
     var b = dfa.buckets
     dfa.dumpBuckets()    
     
+    println(dfa.matchString("abmb"))
   }
 
 }

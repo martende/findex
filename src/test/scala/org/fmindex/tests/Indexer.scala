@@ -363,6 +363,25 @@ class DFATests extends FunSuite with RandomGenerator {
     assert(dfa.matchString("abbc"))
     assert(dfa.matchString("abc"))
   }
+  test("dfa2") {
+    /*
+    [info] (a,97,b)
+    [info] (b,100,f)
+    [info] (a,100,f)
+    [info] (s,97,a)
+    [info] (b,97,b)
+    */
+    val s = new StartState()
+    val a = new State("a")
+    val b = new State("b")
+    val f = new FinishState()
+    s.link(a,'a')
+    a.link(b,'a')
+    a.link(f,'d')
+    b.link(f,'d')
+    b.link(b,'a')
+    val dfa = DFA.processLinkList(s)
+  }
   test("compileBuckets") {
     val dfa = DFA.processLinkList(`ab*c`)
     var m = dfa.buckets
@@ -546,7 +565,6 @@ class NFATest extends FunSuite with RandomGenerator {
   
 }
 class BadTest extends FunSuite with RandomGenerator {
-  test("Detailed test") {
-    
-  }  
+  
+
 }

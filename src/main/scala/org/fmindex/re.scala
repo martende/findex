@@ -45,7 +45,7 @@ object ReParser extends RegexParsers {
 
     connectNodes()
     def connectNodes() {
-      println("connectNodes",startState.name,endState.name,s,s.startState.name,s.endState.name)
+      //println("connectNodes",startState.name,endState.name,s,s.startState.name,s.endState.name)
       op match {
         case _:StarOperator =>
           dummyStart.connect(s)
@@ -74,7 +74,8 @@ object ReParser extends RegexParsers {
     //def connect(v:Node) 
   }
   
-  val charsRecognizedAsPunkt = List('a','b','c','d')
+  val charsRecognizedAsPunkt:List[Char] = (for ( i <- 40 until 127 ) yield i.toChar).toList
+
   
   case class AtomOR(allowedChars:List[Char]) extends BaseAtom {
     lazy val dummyStart = new LinkStartNode()
@@ -123,10 +124,10 @@ object ReParser extends RegexParsers {
       cur.head.connect(dummyEnd)
     }
     def connectNodes() {
-      println("connectNodes",chain)
+      //println("connectNodes",chain)
       //var cur = dummy :: chain
       var parts = splitORParts(chain)
-      println("parts=" + parts)
+      //println("parts=" + parts)
       parts.foreach { x:List[Node] => 
         connectConcatNodes(dummyStart :: x) 
       }
