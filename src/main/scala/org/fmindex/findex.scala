@@ -234,7 +234,21 @@ trait SAISAlgo[T] extends BWTBuilder[T] {
   def SL2String(sl:Array[Boolean] = t) = sl.map( x => if (x) "S" else "L" ).mkString("")
 
   def isLMS(i:Int) = i>0 && t(i) && !t(i-1)
-  def markLMS()
+  
+  def markLMS() {
+    val bkt = bucketEnds.clone()
+    var j = 0
+    for ( i <- 1 until n) {
+      if (isLMS(i)) {
+        val t = bkt(S(i))-1
+        bkt(S(i))=t
+        SA(t) = i
+        j+=1
+      }
+    }
+    lmsCount = j
+  }
+
   def buildSL()
   def induceSAl()
   def induceSAs()
@@ -258,7 +272,39 @@ trait SAISAlgo[T] extends BWTBuilder[T] {
     SA1
   }
 
-  def fillSAWithLMS():Int
+  // compact all the sorted substrings into the first n1 items of SA
+  // on this step all LMS are already sorted
+  def fillSAWithLMS():Int = {
+    var n1 = 0
+    for (i <- 0 until n) {
+      if(isLMS(SA(i))) {
+        SA(n1)=SA(i)
+        n1+=1
+      }
+    }
+    for ( i<- n1 until n) {
+      SA(i) = -1
+    }
+
+    var lmsCount=0
+    for ( i <- 1 until n) {
+      if (isLMS(i)) {
+        lmsCount+=1
+      }
+    }
+
+    n1
+  }
+
+  /*
+   printToFile(new java.io.File("/tmp/example.txt"))(p => {SA.foreach(p.println)})
+  */
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+  
+
   def calcLexNames(n1:Int):Pair[Int,Array[Int]]
 
   def buildStep1() {
@@ -343,19 +389,7 @@ class SAISIntBuilder(_s:Array[Int],_k:Int) extends SAISAlgo[Int] {
       t(i) = S(i) < S(i+1) || (S(i) == S(i+1) && t(i+1) )
     }
   }
-  def markLMS() {
-    val bkt = bucketEnds.clone()
-    var j = 0
-    for ( i <- 1 until n) {
-      if (isLMS(i)) {
-        val t = bkt(S(i))-1
-        bkt(S(i))=t
-        SA(t) = i
-        j+=1
-      }
-    }
-    lmsCount = j
-  }
+  
   def induceSAl()  {
     val bkt = bucketStarts.clone()
     for (i <- 0 until n) {
@@ -379,22 +413,6 @@ class SAISIntBuilder(_s:Array[Int],_k:Int) extends SAISAlgo[Int] {
         SA(k) = j
       }
     }
-  }
-
-  // compact all the sorted substrings into the first n1 items of SA
-  // on this step all LMS are already sorted
-  def fillSAWithLMS():Int = {
-    var n1 = 0
-    for (i <- 0 until n) {
-      if(isLMS(SA(i))) {
-        SA(n1)=SA(i)
-        n1+=1
-      }
-    }
-    for ( i<- n1 until n) {
-      SA(i) = -1
-    }
-    n1
   }
 
   // find the lexicographic names of all substrings
@@ -576,7 +594,7 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
 
   lazy val C:Array[Int] = {
     val cnt = new Array[Int](K)
-    S foreach { idx:cType => cnt(idx)+=1 }
+    S foreach { idx:cType => cnt(idx & 0xff)+=1 }
     cnt
   }
 
@@ -599,19 +617,7 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
       t(i) = S(i) < S(i+1) || (S(i) == S(i+1) && t(i+1) )
     }
   }
-  def markLMS() {
-    val bkt = bucketEnds.clone()
-    var j = 0
-    for ( i <- 1 until n) {
-      if (isLMS(i)) {
-        val t = bkt(S(i))-1
-        bkt(S(i))=t
-        SA(t) = i
-        j+=1
-      }
-    }
-    lmsCount = j
-  }
+  
   def induceSAl()  {
     val bkt = bucketStarts.clone()
     for (i <- 0 until n) {
@@ -637,21 +643,7 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
     }
   }
 
-  // compact all the sorted substrings into the first n1 items of SA
-  // on this step all LMS are already sorted
-  def fillSAWithLMS():Int = {
-    var n1 = 0
-    for (i <- 0 until n) {
-      if(isLMS(SA(i))) {
-        SA(n1)=SA(i)
-        n1+=1
-      }
-    }
-    for ( i<- n1 until n) {
-      SA(i) = -1
-    }
-    n1
-  }
+
 
   // find the lexicographic names of all substrings
   // n1 - start
@@ -659,7 +651,6 @@ class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
   def calcLexNames(n1:Int):Pair[Int,Array[Int]] = {
     var prev = -1
     var name = 0
-
     for (i <- 0 until n1) {
       var pos = SA(i)
       var diff = false
@@ -799,9 +790,6 @@ object AllowedSuffixType {
 }
 
 object IndexMaker {
-  object totoshka {
-    val k = 1
-  }
     import java.io.File
     import org.apache.commons.io.IOUtils
     import scalax.io._
@@ -820,11 +808,40 @@ object IndexMaker {
                 these.filter(! _.isDirectory).toStream append these.filter(_.isDirectory).flatMap(recursiveListFiles)
         }
     }
-    def packTo(buf:java.io.ByteArrayOutputStream,f:File) = {
+    def packTo(out:java.io.ByteArrayOutputStream,f:File) = {
+      val m = 1024*1024
+      /*
+      printf("packTo buf=%d\theap=%d\tfree=%d\t%s\n",
+        out.size/m,
+        Runtime.getRuntime().totalMemory()/m,
+        Runtime.getRuntime().freeMemory()/m,
+        f
+      )
+      */
+      //printMemUsage
       try {
         val fs = new java.io.FileInputStream(f)
-        IOUtils.copy(fs,buf)
-        buf.write(EOF)
+        val buf0 = new Array[Byte](4096)
+        val buf1 = new Array[Byte](4096*2)
+        var len = fs.read(buf0)
+        while(len > 0) {
+          var i = 0
+          var j = 0
+          while ( i < len ) {
+            if ( buf0(i) == 0) {
+              buf1(j) = '\''
+              j=j+1
+              buf1(j) = '0'
+            } else {
+              buf1(j) = buf0(i)
+            }
+            j=j+1
+            i=i+1
+          }
+          out.write(buf1, 0, j)
+          len = fs.read(buf0)
+        }
+        out.write(EOF)
       } catch  {
         case e:java.io.FileNotFoundException =>
       }
@@ -849,14 +866,69 @@ return err;
 
 if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
   */
+  val MB = 1024*1024
+  def printMemUsage {
+    
+         
+    //Getting the runtime reference from system
+    val runtime = Runtime.getRuntime();
+     
+    println("##### Heap utilization statistics [MB] #####");
+     
+    //Print used memory
+    println("Used Memory:"
+        + (runtime.totalMemory() - runtime.freeMemory()) / MB);
+
+    //Print free memory
+    println("Free Memory:"
+        + runtime.freeMemory() / MB);
+     
+    //Print total available memory
+    println("Total Memory:" + runtime.totalMemory() / MB);
+
+    //Print Maximum available memory
+    println("Max Memory:" + runtime.maxMemory() / MB);
+  }
+    import java.io.ByteArrayOutputStream
+    def time[R](block: => R): R = {
+      val t0 = System.nanoTime()
+      val result = block    // call-by-name
+      val t1 = System.nanoTime()
+      println("Elapsed time: " + (t1 - t0) + "ns")
+      result
+    }
+    def processBuffer(buf:ByteArrayOutputStream) {
+      printf("processBuffer: Process %d MB\n" , buf.size/MB)
+      printMemUsage
+      buf.write(0)
+      
+      val sa = new SAISBuilder(buf.toByteArray())
+      printMemUsage
+      time { sa.build }
+      printMemUsage
+    }
     def make(dir:String,recursive:Boolean=true) = {
         val files = recursiveListFiles(new File(dir))
         val buf = new java.io.ByteArrayOutputStream()
+        val BUFLEN = 1024*1024*50
+        var start = false
+        printMemUsage
         
-        println(files)
+        files foreach { f:File  => 
+          /*
+          if ( f.toString == "/usr/include/wx-2.8/wx/wxPython/i_files/_mimetype.i") start=true
+          if ( start)*/
+          packTo(buf,f) 
 
-        files foreach { f:File  => packTo(buf,f) } 
-        
+          if ( buf.size >= BUFLEN ) {
+            processBuffer(buf)
+            buf.reset
+          }
+        }
+        if ( buf.size > 0)
+          processBuffer(buf)
+        printMemUsage
+        /*
         // TODO: nado poluchit v pamiati vse faili kakto naibolee deshevim metodom
         val data = buf.toByteArray()
 
@@ -865,6 +937,7 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
         buildSA(data)
 
         println(data(0))
+        */
         /*
         for(i <- 0 to buf.size()) {
             println("i  " + i + "  " + buf[i] );
