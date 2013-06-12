@@ -61,6 +61,7 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert(sa.bucketStarts(0)==0 && sa.bucketStarts(1)==1 && sa.bucketStarts(98)==5 && sa.bucketStarts(99)==8)
 
   }
+  
   test("article example") {
     val sa = new SAISBuilder(fromString("mmiissiissiippii"))
     val naive = new NaiveBuilder(fromString("mmiissiissiippii"))
@@ -564,5 +565,15 @@ class NFATest extends FunSuite with RandomGenerator {
   */
 }
 class BadTest extends FunSuite with RandomGenerator {
-
+  test("bwt merge") {
+    val sa1 = new SAISBuilder(fromString("bracaabraba@"))
+    val sa2 = new SAISBuilder(fromString("abracadabra@"))
+    val sa3 = new SAISBuilder(fromString("bracaabraba@abracadabra@"))
+    sa1.build()
+    sa2.build()
+    sa3.build()
+    sa1.printSA()
+    sa2.printSA()
+    sa3.printSA()
+  }
 }

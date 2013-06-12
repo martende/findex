@@ -4,6 +4,8 @@ import scalax.io._
 import scalax.file.Path
 import scalax.io.StandardOpenOption._
 
+import Util._
+
 trait SuffixAlgo {
   val n:Int
 
@@ -324,6 +326,9 @@ trait SAISAlgo[T] extends BWTBuilder[T] {
 
   def buildStep3(sa1:Array[Int])
   def build():Array[Int] = {
+    System.gc()
+    println("Start SAIS build on len" , n)
+    printMemUsage
     buildStep1()
     val SA1 = buildStep2()
     buildStep3(SA1)
@@ -793,7 +798,7 @@ object IndexMaker {
     import java.io.File
     import org.apache.commons.io.IOUtils
     import scalax.io._
-
+    import Util._
     val EOF = 0xff
     val POWER = 256
 
@@ -810,14 +815,15 @@ object IndexMaker {
     }
     def packTo(out:java.io.ByteArrayOutputStream,f:File) = {
       val m = 1024*1024
-      /*
-      printf("packTo buf=%d\theap=%d\tfree=%d\t%s\n",
+      
+      printf("packTo buf=%d\ttotal=%d\tfree=%d\tused=%d\t%s\n",
         out.size/m,
         Runtime.getRuntime().totalMemory()/m,
         Runtime.getRuntime().freeMemory()/m,
+        (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/m,
         f
       )
-      */
+      
       //printMemUsage
       try {
         val fs = new java.io.FileInputStream(f)
@@ -846,6 +852,7 @@ object IndexMaker {
       } catch  {
         case e:java.io.FileNotFoundException =>
       }
+
     }
 
     def buildSA(data: Array[Byte]) {
@@ -867,29 +874,7 @@ return err;
 
 if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
   */
-  val MB = 1024*1024
-  def printMemUsage {
-    
-         
-    //Getting the runtime reference from system
-    val runtime = Runtime.getRuntime();
-     
-    println("##### Heap utilization statistics [MB] #####");
-     
-    //Print used memory
-    println("Used Memory:"
-        + (runtime.totalMemory() - runtime.freeMemory()) / MB);
-
-    //Print free memory
-    println("Free Memory:"
-        + runtime.freeMemory() / MB);
-     
-    //Print total available memory
-    println("Total Memory:" + runtime.totalMemory() / MB);
-
-    //Print Maximum available memory
-    println("Max Memory:" + runtime.maxMemory() / MB);
-  }
+  
     import java.io.ByteArrayOutputStream
     def time[R](block: => R): R = {
       val t0 = System.nanoTime()
@@ -899,11 +884,13 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
       result
     }
     def processBuffer(buf:ByteArrayOutputStream) {
+      System.gc()
       printf("processBuffer: Process %d MB\n" , buf.size/MB)
       printMemUsage
       buf.write(0)
       
       val sa = new SAISBuilder(buf.toByteArray())
+      System.gc()
       printMemUsage
       time { sa.build }
       printMemUsage
@@ -914,7 +901,7 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
         /*
         time  1024*1024*50 = 1m54.985s
         */
-        val BUFLEN = 1024*1024*100
+        val BUFLEN = 1024*1024*50
         var start = false
         printMemUsage
         

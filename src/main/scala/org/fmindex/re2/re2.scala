@@ -235,6 +235,7 @@ object REParser {
         }
       }
       */
+      /*
     case class StatePoint(front:List[BaseState],len:Int,sp:Int,ep:Int) {
         def expand(sa:SuffixAlgo):List[StatePoint] = {
             var ret = List()
@@ -277,4 +278,5 @@ object REParser {
         //println(statesFront.head.expand(sa))
         results
     }
+    */
 }
