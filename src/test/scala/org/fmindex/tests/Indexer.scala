@@ -135,7 +135,7 @@ class BasicTests extends FunSuite with RandomGenerator {
     // Test full cycle
 
     val sa2 = new SAISBuilder(fromString(in))
-    sa2.build
+    sa2.build()
     assert(naive.SA.sameElements(sa2.SA))
   }
 
@@ -149,13 +149,13 @@ class BasicTests extends FunSuite with RandomGenerator {
   test("sais builder") {
     val b = Array[Byte](97,115,100,10,97,115,100,10,-1,97,115,100,10,98,101,108,107,97,64,98,101,108,107,97,45,104,111,109,101,58,47,116,109,112,47,116,36,32,99,97,116,32,62,32,116,50,46,116,120,116,10,97,115,100,97,115,100,10,-1,0)
     val k = new SAISBuilder(b)
-    k.build
+    k.build()
   }
   
   test("bwt test") {
     val sa = new SAISBuilder(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.txt")
-    sa.build
+    sa.build()
     sa.writeBWTNative(f.path)
 
     val ti:Input = Resource.fromFile(f.path)
@@ -166,7 +166,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   test("fl test") {
     val sa = new SAISBuilder(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.fl")
-    sa.build
+    sa.build()
     sa.writeFL(f.path)
     val ti:Input = f.inputStream
     //println(java.nio.ByteBuffer.wrap(ti.byteArray))
@@ -201,7 +201,7 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert(sa.cf(0) == 0)
     assert(sa.cf('a') == 1)
     assert(sa.cf('b') == 6)
-    sa.build
+    sa.build()
     assert(sa.BWT(0) == 'a' , "")
     sa.buildOCC
     /*
@@ -248,7 +248,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   }
   test("plain searching") {
     val sa = new SAISBuilder(fromString("abracadabra"))
-    sa.build
+    sa.build()
     sa.buildOCC
 
     sa.search("bra".getBytes()) match {
@@ -259,7 +259,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   }
   test("BWT walki") {
     val sa = new SAISBuilder(fromString("abracadabra"))
-    sa.build
+    sa.build()
     sa.buildOCC
     //sa.printSA()
     // cadabra
@@ -275,7 +275,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   }
   test("BWT substrings") {
     val sa = new SAISBuilder(fromString("abracadabra"))
-    sa.build
+    sa.build()
     sa.buildOCC
     //sa.printSA()
     // cadabra
@@ -285,7 +285,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   }
   test("BWT substrings2") {
     val sa = new SAISBuilder(fromString("mmabcacadabbbca".reverse))
-    sa.build
+    sa.build()
     sa.buildOCC
     //sa.printSA()
     assert(sa.nextSubstr(11,3) == "cba",sa.nextSubstr(11,3))
@@ -293,7 +293,7 @@ class BasicTests extends FunSuite with RandomGenerator {
   }
   test("getPrevRange") {
     val sa = new SAISBuilder(fromString("mmabcacadabbbca".reverse))
-    sa.build
+    sa.build()
     sa.buildOCC
     //sa.printSA()
 
@@ -403,7 +403,7 @@ class DFATests extends FunSuite with RandomGenerator {
   }
   test("match SA basics") {
     val sa = new SAISBuilder(fromString("mmabcacadabbbca".reverse))
-    sa.build
+    sa.build()
     sa.buildOCC
     //sa.printSA()
     val dfa = DFA.processLinkList(`ab*c`)
@@ -416,7 +416,7 @@ class DFATests extends FunSuite with RandomGenerator {
   }
   test("match SA basics - abit larger string") {
     val sa = new SAISBuilder(fromString("2b2w9vzrtqy3vzclgoofxgz9nal81y1fg8rozxkb5aaep1vpafp3cgsumc0z1rhpatcwo4d7nxc751h3a4woj3dbjf6ynfbkoom8sxoc9t3dqzkfs9akc6cmsy7cndi6bf116fju5rcsysixgkaih4zbkl8qo3ko2c42f34x6cqdew8x2jgz36r4bskabx02lxbfzokc".reverse))
-    sa.build
+    sa.build()
     sa.buildOCC
     val dfa = DFA.processLinkList(`ab*c`)
     val results = dfa.matchSA(sa)    
@@ -566,14 +566,26 @@ class NFATest extends FunSuite with RandomGenerator {
 }
 class BadTest extends FunSuite with RandomGenerator {
   test("bwt merge") {
-    val sa1 = new SAISBuilder(fromString("bracaabraba@"))
-    val sa2 = new SAISBuilder(fromString("abracadabra@"))
-    val sa3 = new SAISBuilder(fromString("bracaabraba@abracadabra@"))
+    val sa1 = new SAISBuilder(fromString("brac@"))
+    //val sa1 = new SAISBuilder(fromString("ippisissim"))
+    //val sa2 = new SAISBuilder(fromString("abra@"))
+    val sah_1 = new SAISBuilder(fromString("abra@brac@"))
+    val sah = new SAISBuilder(fromString("brac@abra@"))
+    val saall = new SAISBuilder(fromString("brac@abra@caba@"))
+    
     sa1.build()
     sa2.build()
-    sa3.build()
+    
+    sah.build()
+    saall.build()
+    sah_1.build()
+    
     sa1.printSA()
     sa2.printSA()
-    sa3.printSA()
+    sah.printSA()
+
+    //sah_1.printSA()
+    //saall.printSA()
+    //sa3.printSA()
   }
 }

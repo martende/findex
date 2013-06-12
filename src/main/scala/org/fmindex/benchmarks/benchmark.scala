@@ -120,7 +120,7 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
   def timeScalaSuffixArray(reps: Int) = repeat(reps) {
     var result = 0
     var sf = new org.fmindex.SAISBuilder(is)
-    sf.build
+    sf.build()
     result
   }
 

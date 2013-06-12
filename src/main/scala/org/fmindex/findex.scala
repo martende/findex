@@ -38,13 +38,8 @@ trait SuffixAlgo {
   }
   
 }
-
-trait BWTBuilder[T] {
-  val S:ArrayWrapper[T]
-  val n:Int
-  val SA: Array[Int]
-  def BWT(i:Int):T
-  def build(): Array[Int]
+trait BWTDebugging[T] {
+  self:BWTBuilder[T] => 
 
   def arrayToString(s : Array[T]) : String
   def arrayToString(s : scala.collection.mutable.ArraySeq[T]):String
@@ -64,8 +59,6 @@ trait BWTBuilder[T] {
         printf("%2d -> %2d.\t%s\n",i,SA(i),stringLike(i))
     }
   }
-
-
 
   def printBuckets(b:Array[Int]) {
     var skip = false
@@ -87,117 +80,15 @@ trait BWTBuilder[T] {
   }
 }
 
-class NaiveIntBuilder(_s:Array[Int]) extends BWTBuilder[Int] {
-  val S:IntArrayWrapper = new IntArrayWrapper(_s)
-  val n:Int = _s.size
-  val SA: Array[Int] = {
-    val s = new Array[Int](n)
-    (0 until n).foreach(i => s(i)=i )
-    s
-  }
-
-  def arrayToString(s : Array[Int]) : String = s.mkString(",")
-  def arrayToString(s : scala.collection.mutable.ArraySeq[Int]):String = {
-    val ts = new Array[Int](s.size)
-    s.copyToArray(ts)
-    arrayToString(ts)
-  }
-  
-  def BWT(i:Int):Int = {
-    val pIdx = SA(i)-1
-    S((if (pIdx >= 0) pIdx else n-1) )
-  }
-
-  val ZERO = Array(0:Int)
-
-  def naiveIsSASorted(firstCount:Int=n):Boolean = {
-    var xi = SA(0)
-    if ( xi >= 0 ) {
-      var prev =  arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-      for (i <- 1 until firstCount) {
-        xi = SA(i)
-        val current =  arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-        if (current < prev) return false
-        prev = current
-      }
-      true
-    } else {
-      false
-    }
-  }
-
-  def build(): Array[Int] =  {
-    class SASorter extends Ordering[Int] {
-      def compare(x: Int,y: Int) = {
-        val xi = SA(x)
-        val yi = SA(y)
-        val xs = arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-        val ys = arrayToString(S.slice(yi,n) ++ ZERO ++ S.slice(0,yi))
-        xs compare ys
-      }
-    }
-    // TODOno: Sorting copying - passed for naive sort
-    SA.sorted(new SASorter).copyToArray(SA)
-    SA
-  }
-
-}
-class NaiveBuilder(_s:Array[Byte]) extends BWTBuilder[Byte] {
-  val S:ByteArrayWrapper = new ByteArrayWrapper(_s)
-  val n:Int = _s.size
-  val SA: Array[Int] = {
-    val s = new Array[Int](n)
-    (0 until n).foreach(i => s(i)=i )
-    s
-  }
-
-  def arrayToString(s : Array[Byte]) : String = new String(s).replace('\0','$')
-  def arrayToString(s : scala.collection.mutable.ArraySeq[Byte]):String = {
-    val ts = new Array[Byte](s.size)
-    s.copyToArray(ts)
-    arrayToString(ts)
-  }
-
-  def BWT(i:Int):Byte = {
-    val pIdx = SA(i)-1
-    S(if (pIdx >= 0) pIdx else n-1 ).toByte
-  }
-  val ZERO = Array(0:Byte)
-
-  def naiveIsSASorted(firstCount:Int=n):Boolean = {
-    var xi = SA(0)
-    if ( xi >= 0 ) {
-      var prev =  arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-      for (i <- 1 until firstCount) {
-        xi = SA(i)
-        val current =  arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-        if (current < prev) return false
-        prev = current
-      }
-      true
-    } else {
-      false
-    }
-  }
-
-  def build(): Array[Int] =  {
-    class SASorter extends Ordering[Int] {
-      def compare(x: Int,y: Int) = {
-        val xi = SA(x)
-        val yi = SA(y)
-        val xs = arrayToString(S.slice(xi,n) ++ ZERO ++  S.slice(0,xi))
-        val ys = arrayToString(S.slice(yi,n) ++ ZERO ++ S.slice(0,yi))
-        xs compare ys
-      }
-    }
-    // TODOno: Sorting copying - passed for naive sort
-    SA.sorted(new SASorter).copyToArray(SA)
-    SA
-  }
-
+trait BWTBuilder[T] {
+  val S:ArrayWrapper[T]
+  val n:Int
+  val SA: Array[Int]
+  def BWT(i:Int):T
+  def build(debug:Boolean=false): Array[Int]
 }
 
-trait SAISAlgo[T] extends BWTBuilder[T] {
+trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
   val K:Int
   // Must be lazy
   lazy val t: Array[Boolean] = new Array[Boolean](n)
@@ -325,7 +216,8 @@ trait SAISAlgo[T] extends BWTBuilder[T] {
   }
 
   def buildStep3(sa1:Array[Int])
-  def build():Array[Int] = {
+  
+  def build(debug:Boolean=false): Array[Int] = {
     System.gc()
     println("Start SAIS build on len" , n)
     printMemUsage
@@ -892,7 +784,7 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
       val sa = new SAISBuilder(buf.toByteArray())
       System.gc()
       printMemUsage
-      time { sa.build }
+      time { sa.build(debug=true) }
       printMemUsage
     }
     def make(dir:String,recursive:Boolean=true) = {
