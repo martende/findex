@@ -22,4 +22,6 @@ http://run.unl.pt/bitstream/10362/5308/1/Pereira_2010.pdf
 
 BWTDisk
 
-http://people.unipmn.it/manzini/bwtdisk/bwte.pdf
+1) http://people.unipmn.it/manzini/bwtdisk/bwte.pdf
+2) http://www.cs.hut.fi/~travis/papers/algorithmica12.pdf
+

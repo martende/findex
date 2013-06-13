@@ -566,26 +566,7 @@ class NFATest extends FunSuite with RandomGenerator {
 }
 class BadTest extends FunSuite with RandomGenerator {
   test("bwt merge") {
-    val sa1 = new SAISBuilder(fromString("brac@"))
-    //val sa1 = new SAISBuilder(fromString("ippisissim"))
-    //val sa2 = new SAISBuilder(fromString("abra@"))
-    val sah_1 = new SAISBuilder(fromString("abra@brac@"))
-    val sah = new SAISBuilder(fromString("brac@abra@"))
-    val saall = new SAISBuilder(fromString("brac@abra@caba@"))
-    
-    sa1.build()
-    sa2.build()
-    
-    sah.build()
-    saall.build()
-    sah_1.build()
-    
-    sa1.printSA()
-    sa2.printSA()
-    sah.printSA()
-
-    //sah_1.printSA()
-    //saall.printSA()
-    //sa3.printSA()
+    val b1 = new BwtIndex(data=fromString("abracadabra"))
+    val b2 = new BwtIndex(data=fromString("bracaabraca"))
   }
 }

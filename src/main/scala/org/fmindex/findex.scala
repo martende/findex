@@ -88,6 +88,129 @@ trait BWTBuilder[T] {
   def build(debug:Boolean=false): Array[Int]
 }
 
+class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) {
+  import org.apache.commons.io.IOUtils
+  assert(!(filename == null && data.isEmpty))
+  
+  val plainTextFile = filename+".plain"
+  val bwtIndexFile  = filename+".bwt"
+  val gttnIndexFile  = filename+".gtn"
+
+  var _bwtRank:Option[Int] = None
+  var _gt_tn:Option[Array[Boolean]] = None
+
+  // Plain data - kommen aus file or direct byte array 
+  lazy val S:ArrayWrapper[Byte] = new ByteArrayWrapper(
+    Option(data).getOrElse({
+      val input = new java.io.FileInputStream(plainTextFile)
+      if ( partial_len < 0) {
+        val buf = new java.io.ByteArrayOutputStream()
+        IOUtils.copy(input,buf)
+        input.close()
+        buf.toByteArray()
+      } else {
+        val buf:Array[Byte] = new Array[Byte](partial_len)
+        input.read(buf)
+        buf
+      }
+    })
+  )
+  // If S[i..] suffix bigger than t[0..*]
+  lazy val GT_TN:Array[Boolean] = _gt_tn.getOrElse({
+    loadGTN(partial_len).getOrElse({
+      buildBWT()
+      _gt_tn.getOrElse({
+        throw new Exception("_gt_tn cant be calculated")
+      })
+    })
+  })
+
+  def loadGTN(len:Int):Option[Array[Boolean]] = {
+    val input = new java.io.FileInputStream(plainTextFile)
+    val buf = new Array[Boolean](len)
+    var b = 0
+    var i = 0
+    val buf: Array[Boolean] = FileUtils.readFileToByteArray(f).map(_ == 0)
+    
+    while (i < len && buf >=0) {
+      b = in.read();
+      if ( buf > 0 ) {
+        buf(i) = (b == 0)
+        i+=1
+      } else {
+        throw new Exception("_gt_tn cant be calculated")
+      }
+      i+=1
+    }
+    Option(buf)
+  }
+
+  if (_gt_tn != null ) _gt_tn else {
+    //
+    buildBWT()
+  }
+
+  lazy val length = if (_length == null ) {
+    // Load length acording data 
+    _length = S.length
+  } else _length
+
+  lazy val bwtRank = {
+    _bwtRank.getOrElse({
+      buildBWT()
+      _bwtRank.getOrElse({
+        throw new Exception("_bwtRank cant be calculated")
+      })
+    })
+    // calculate or load
+  }
+
+  def savePlain() = {
+    val fs = new java.io.FileOutputStream(plainTextFile)
+    fs.write(S.data)
+    fs.close()
+  }
+
+  def buildBWT() = {
+    val sa = new SAISBuilder(S.data)
+    sa.build()
+    sa.writeBWT(bwtIndexFile)
+    sa.writeGTTN(gttnIndexFile)
+  }
+}
+
+
+object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
+  
+  // Create new bwt1..bwt2
+  def compute_gt_eof(bwt1:BwtIndex,bwt2:BwtIndex) = {
+    val n = bwt1.length
+    val gt_eof = new Array[Boolean](bwt1.length);
+    var i = 0
+    var startj = 0
+    while ( i < n) {
+      var j = startj 
+      while ( i + j  != n  && bwt1.S(i+j) != bwt2.S(j) ) j+=1
+      if ( i + j  == n ) {
+        gt_eof(i) = ! bwt2.GT_TN(j)
+      } else {
+        gt_eof(i) = ( bwt1.S(i+j) > bwt2.S(j)  )
+      }
+      i+=1
+    }
+    gt_eof
+  }
+
+  def build(bwt1:BwtIndex,bwt2:BwtIndex,debug:Boolean=false)  {
+    val rank0 = bwt2.bwtRank
+
+    assert(bwt1.length < bwt2.length)
+
+    compute_gt_eof(bwt1,bwt2)
+
+  }
+}
+
 trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
   val K:Int
   // Must be lazy
@@ -229,9 +352,11 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
 }
 
 abstract class ArrayWrapper[T](_s:Array[T])  {
+  val data = _s
   def apply(i:Int):Int
   def update(i:Int,v:Int)
   // Abit Iterator API
+  val length = _s.length
   def slice(from: Int, until: Int) = _s.slice(from,until)
   def foreach[U](f: T => U) {
     _s.foreach(f)
@@ -432,7 +557,6 @@ trait NaiveSearcher extends SuffixAlgo {
     }
   }
 }
-
 class SAISBuilder(_s:Array[Byte]) extends SAISAlgo[Byte] with NaiveSearcher {
   type cType = Byte
   val S:ByteArrayWrapper = new ByteArrayWrapper(_s)
