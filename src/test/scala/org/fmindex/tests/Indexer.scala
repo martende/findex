@@ -4,7 +4,7 @@ import org.scalatest.FunSuite
 import org.fmindex._
 import scalax.file.Path
 import scalax.io._
-
+import org.fmindex.Util._
 
 class GSuite extends FunSuite {
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
@@ -151,7 +151,17 @@ class BasicTests extends FunSuite with RandomGenerator {
     val k = new SAISBuilder(b)
     k.build()
   }
-  
+  test("nulled array") {
+    var nb = new  ByteArrayNulledWrapper("mmiissiissiippii".getBytes())
+    var b0 = fromString("mmiissiissiippii")
+    assert(nb.length == b0.length)
+    for (i <- 0 until b0.length ) {
+      assert(nb(i) == b0(i),"nb(i) == b0(i) i=%d nb(i)=%d b0(i)=%d".format(i,nb(i),b0(i)))
+    }
+    val sa = new SAISBuilder(nb)
+    sa.build()
+  }
+
   test("bwt test") {
     val sa = new SAISBuilder(fromString("abracadabra"))
     var f = Path.fromString("/tmp/bwttest.txt")
@@ -564,9 +574,94 @@ class NFATest extends FunSuite with RandomGenerator {
   }
   */
 }
+class BWTMerge extends FunSuite with RandomGenerator {
+  
+  test("compute_gt_eof") {
+    val d1 = "abracadabra"
+    val d2 = "bracaabraca"
+    val b1 = new BwtIndex(data=d1.getBytes)
+    val b2 = new BwtIndex(data=d2.getBytes)
+    
+    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+    for ( i <- 0 until d1.length) {
+      val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
+      assert((s1>d2) == gt_eof(i),"s1=%s,d2=%s,s1>d2 = %s != gt_eof(i=%d) = %s" format (s1,d2,s1>d2,i,gt_eof(i)))
+    }
+  }
+  test("kmp_prefix") {
+    val t = BWTMerger.kmp_preifx("ababaca".getBytes)
+    assert(t.sameElements(Array(0,0,1,2,3,0,1)))
+  }
+  test("SAIS0FreeBuilder calcGTTN direct test") {
+    val d2 = "daxecedaddbadxcdexdbaexacbcxaecbecbcaaaxbcbexeedbacbaebxdxadbxaxccbcxacdexabcddbccedaxcxecaxxacbbdbx"
+    val sa = new SAIS0FreeBuilder(d2.getBytes)
+    sa.build()
+    assert(sa.bwtRank==56)
+    val gtn = sa.calcGTTN
+    for ( i <- 0 until d2.length) {
+      val s1 = d2.substring(i,d2.length)
+      assert((s1>d2) == gtn(i),"i=%d, s1=%s gtn(i)=%s (s1>d2)=%s" format (
+        i,s1,gtn(i),(s1>d2)
+      ))
+    }
+  }
+  test("compute_gt_eof abit larger") {
+    val d1 = "ecddxxdxbxacceaeexxxcdaxccxadbbccabccexxccbcbexdbddcabbecxbxxdbcabbeedxbxxaaddbaaxdedxdbexabexdxxaed"
+    val d2 = "daxecedaddbadxcdexdbaexacbcxaecbecbcaaaxbcbexeedbacbaebxdxadbxaxccbcxacdexabcddbccedaxcxecaxxacbbdbx"
+    val b1 = new BwtIndex(data=d1.getBytes)
+    val b2 = new BwtIndex(data=d2.getBytes)
+    
+    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+    //println(gt_eof.mkString(","))
+    for ( i <- 0 until d1.length) {
+      val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
+      //println(s1,d2,s1>d2)
+      assert((s1>d2) == gt_eof(i),"s1=%s,d2=%s,s1>d2 = %s != gt_eof(i=%d) = %s" format (
+        s1,d2,s1>d2,i,gt_eof(i))
+      )
+    }
+  }
+
+
+  test("compute_gt_eof random") {
+    val c = 1
+    for ( i<- 0 until c ) {
+      val d1 = randomString("abcdex")(100)
+      val d2 = randomString("abcdex")(100)
+
+      val b1 = new BwtIndex(data=d1.getBytes)
+      val b2 = new BwtIndex(data=d2.getBytes)
+      
+      val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+      //println(gt_eof.mkString(","))
+      for ( i <- 0 until d1.length) {
+        val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
+        if ( (s1>d2) != gt_eof(i) ) {
+          println(d1,d2)
+        }
+        assert((s1>d2) == gt_eof(i),"s1>d2 = %s != gt_eof(i=%d) = %s" format (s1>d2,i,gt_eof(i)))
+      }
+    }
+  }
+
+}
+
 class BadTest extends FunSuite with RandomGenerator {
-  test("bwt merge") {
-    val b1 = new BwtIndex(data=fromString("abracadabra"))
-    val b2 = new BwtIndex(data=fromString("bracaabraca"))
+  
+  test("compute_gt_eof abit larger2") {
+    val d1 = "eecedebxedxdacebddbbdxxxdcdadxeecbeabeaebbcbddbdbddbbxaabbadaccxxdecxeabbedxabxeecdebcadeedadbbbxece"
+    val d2 = "abdxcbbdccdeecexbbxecdbaeeeaeecxacxxcdcdadedddxbxdxxaedbcdbcbxdaedeaecbxdecxccbcxdebcxbxcdbxabbdbxda"
+    val b1 = new BwtIndex(data=d1.getBytes)
+    val b2 = new BwtIndex(data=d2.getBytes)
+    
+    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+    //println(gt_eof.mkString(","))
+    for ( i <- 0 until d1.length) {
+      val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
+      //println(s1,d2,s1>d2)
+      assert((s1>d2) == gt_eof(i),"s1=%s,d2=%s,s1>d2 = %s != gt_eof(i=%d) = %s" format (
+        s1,d2,s1>d2,i,gt_eof(i))
+      )
+    }
   }
 }

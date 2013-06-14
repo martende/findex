@@ -3,6 +3,7 @@ package org.fmindex.benchmarks
 
 
 import SAIS._
+import org.fmindex.Util._
 
 import annotation.tailrec
 import com.google.caliper.Param
@@ -99,15 +100,19 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
   // the parameter to be known by, and add this annotation (see @Param javadocs for more details)
   // caliper will inject the respective value at runtime and make sure to run all combinations
   @Param(Array("10", "100", "1000", "5000","10000","20000","30000","40000","50000"))
+  //@Param(Array("10"))
   val length: Int = 0
 
   var is: Array[Byte] = _
+  var iswithout0: Array[Byte] = _
   var SA: Array[Int] = _
 
 
   override def setUp() {
     // set up all your benchmark data here
-    is = fromString(randomAlphanumericString(length))
+    val m = randomAlphanumericString(length)
+    is = fromString(m)
+    iswithout0 = m.getBytes
     SA = new Array[Int](length+1)
   }
 
@@ -120,6 +125,13 @@ class Benchmark extends SimpleScalaBenchmark with RandomGenerator {
   def timeScalaSuffixArray(reps: Int) = repeat(reps) {
     var result = 0
     var sf = new org.fmindex.SAISBuilder(is)
+    sf.build()
+    result
+  }
+  
+  def timeScalaNulledArray(reps: Int) = repeat(reps) {
+    var result = 0
+    var sf = new org.fmindex.SAISBuilder(new org.fmindex.ByteArrayNulledWrapper(iswithout0))
     sf.build()
     result
   }

@@ -9,4 +9,7 @@ object Util {
     println("Total Memory:" + runtime.totalMemory() / MB)
     println("Max Memory:" + runtime.maxMemory() / MB)
   }
+
+  implicit def Array2ByteArrayWrapper(_s:Array[Byte]) = new ByteArrayWrapper(_s)
+
 }
