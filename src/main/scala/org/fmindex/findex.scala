@@ -51,7 +51,7 @@ trait BWTDebugging[T] {
       if ( idx == -1 )
         List.fill(n)(".").mkString
       else
-        arrayToString(S.slice(idx,n)) + arrayToString(S.slice(0,idx))
+        arrayToString(S.slice(idx,n) ++ S.slice(0,idx))
     }
     for ( i <- 0 until n) {
       //if ( ! lmsOnly || isLMS(SA(i))) {
@@ -91,7 +91,9 @@ trait BWTBuilder[T] {
 class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) {
   import org.apache.commons.io.IOUtils
   assert(!(filename == null && data.isEmpty))
-  
+  // Alfabet size
+  val K = 256 
+
   val plainTextFile = filename+".plain"
   val bwtIndexFile  = filename+".bwt"
   val gttnIndexFile  = filename+".gtn"
@@ -124,6 +126,22 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
       }
     })
   )
+
+  lazy val bucketStarts:Array[Int] = {
+    if ( data != null ) {
+      val C = new Array[Int](K)
+      val bs = new Array[Int](K)
+      for (i <- 0 until length ) {
+        C(S(i))+=1
+      }
+      for (i <- 1 until K ) {
+        bs(i)=bs(i-1)+C(i)
+      }
+      bs
+    } else {
+       throw new Exception("bucketStarts can't be loaded") 
+    }
+  }
   // If S[i..] suffix bigger than t[0..*]
   lazy val GT_TN:Array[Boolean] = 
     loadGTN(_len).getOrElse({
@@ -174,6 +192,20 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
     // calculate or load
   }
 
+  def sa2bwt(sa:Array[Int]):Array[Byte] = {
+    val bwt = new Array[Byte](sa.length)
+    val n = sa.length
+    var i = 0
+
+    while ( i < n ) {
+      var j = sa(i) - 1
+      if ( j < 0) j = n-1
+      bwt(i)=S(j)
+      i+=1
+    }
+    bwt
+  }
+
   def savePlain() = {
     val fs = new java.io.FileOutputStream(plainTextFile)
     fs.write(S.data)
@@ -192,6 +224,7 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
       _gt_tn = Some(sa.calcGTTN)
     }
     _bwtRank = Some(sa.bwtRank)
+
   }
 }
 
@@ -215,7 +248,7 @@ object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
   def compute_gt_eof(bwt1:BwtIndex,bwt2:BwtIndex) = {
     val n = bwt1.length
     val gt_eof = new Array[Boolean](bwt1.length);
-    val kmp_shift = kmp_preifx(bwt1.S)
+    val kmp_shift = kmp_preifx(bwt2.S)
     var i = 0
     var startj = 0
     while ( i < n) {
@@ -228,13 +261,13 @@ object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
       }
       if ( j==0 ) {
         startj = 0 
-        i+=1        
+        i+=1
       } else {
         val k = kmp_shift(j-1)
-        printf("compute_gt_eof i=%d substr of len=%d k=%d\n",i,j,k)
         startj=k
         var h=1
         val m=j-k
+        assert(k < j)
         while (h < m) {
           gt_eof(i+h) = bwt2.GT_TN(h)
           h+=1
@@ -245,13 +278,103 @@ object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
     gt_eof
   }
 
+  def remap_alphabet(bwt1:BwtIndex,gt_eof:Array[Boolean]) = {
+    
+    def create_occ() = {
+      val t = bwt1.S
+      val n = bwt1.length - 1
+      val occ = new Array[Int](bwt1.K+2)
+      var i = 0
+      while ( i < n ) {
+        if ( t(i) < t(n) || ( t(i) == t(n) && ! gt_eof(i+1)) ) {
+          occ(t(i))+=1
+        } else {
+          occ(t(i)+2)+=1
+        }
+        i+=1
+      }
+      occ(t(n)+1)+=1
+      occ
+    }
+    def create_map(occ:Array[Int]) = {
+      val map = new Array[Int](bwt1.K+2)
+      val oclen = occ.length
+      var asize = 0
+      var i = 0
+      while (i < oclen) {
+        if ( occ(i)>0) {
+          map(i)=asize
+          asize+=1
+        } else {
+          map(i)=oclen
+        }
+        i+=1
+      }
+      (map,asize)
+    }
+    def create_mapped_string(map:Array[Int]) = {
+      var i = 0
+      val n = bwt1.length
+      val n_1 = n -1 
+      val t = bwt1.S
+      val newt = new Array[Int](bwt1.length)
+      while ( i < n ) {
+        val c = if ( i == n - 1 ) t(i)+1 
+          else if ( t(i) < t(n_1) || ( t(i) == t(n_1) && ! gt_eof(i+1) ) ) t(i)
+          else t(i)+2
+        newt(i) = map(c)
+        i+=1
+      }
+      newt
+    }
+    val occ = create_occ()
+    val (map,asize) = create_map(occ)
+    (create_mapped_string(map),asize)
+  }
+
+  def suf_insert_bwt(bwt:Array[Byte],bwt1:BwtIndex,bwt2:BwtIndex) {
+    val gaps = new Array[Int](bwt.length)
+    var pfxBuffer:List[Byte] = List()
+
+    var c = bwt2.S(0)
+
+    pfxBuffer = c.toByte :: pfxBuffer 
+    gaps(0)=1
+    
+    val start_sa_range = bwt1.bucketStarts
+    var cur_rank = start_sa_range(c)
+    gaps(cur_rank)+=1
+    val n = bwt1.length
+
+    while ( i < n) {
+      c = bwt2.S(i)
+      cfirst = start_sa_range[c]
+      old = cur_rank
+      cur_rank = if (cur_rank==0) cfirst
+      else cfirst + calcRank(bwt,cur_rank-1,)
+      i+=1
+    }
+    println(bwt1.bucketStarts.mkString(","),cur_rank)
+  }
+
   def build(bwt1:BwtIndex,bwt2:BwtIndex,debug:Boolean=false)  {
     val rank0 = bwt2.bwtRank
 
     assert(bwt1.length <= bwt2.length,"bwt1.length(%d) > bwt2.length(%d)".format(bwt1.length,bwt2.length))
 
-    compute_gt_eof(bwt1,bwt2)
 
+    val gt_eof = compute_gt_eof(bwt1,bwt2)
+    val (remapped,k) = remap_alphabet(bwt1,gt_eof)
+    
+    val sa = new SAISIntBuilder(new IntArrayWrapper(remapped),k)
+    sa.build()
+    val ranks = sa.convertSA2Rank(sa.SA)
+    
+    val bwt = bwt1.sa2bwt(sa.SA)
+
+    val newRank0 = sa.SA(0)
+    val newRankLast = sa.SA(bwt1.length-1)
+    sa.printSA()
   }
 }
 
@@ -435,6 +558,7 @@ class ByteArrayNulledWrapper(_s:Array[Byte]) extends ArrayWrapper[Byte](_s) {
   def update(i:Int,v:Int) {
     _s(i) = v.toByte
   }
+
   def update(i:Int,v:Byte) {
     _s(i) = v
   }
@@ -515,9 +639,9 @@ class SAIS0FreeBuilder(_s:Array[Byte]) extends SAISBuilder(new ByteArrayNulledWr
     output.close()
   }
   def calcGTTN = {
-    val gttn = new Array[Boolean](n)
-    assert(bwtRank > 0)
-    for ( i<- bwtRank+1 until n ) {
+    val gttn = new Array[Boolean](n-1)
+    assert(bwtRank >= 0)
+    for ( i<- bwtRank+1 until n-1 ) {
       gttn(SA(i)) = true
     }
     gttn

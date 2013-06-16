@@ -592,6 +592,27 @@ class BWTMerge extends FunSuite with RandomGenerator {
     val t = BWTMerger.kmp_preifx("ababaca".getBytes)
     assert(t.sameElements(Array(0,0,1,2,3,0,1)))
   }
+
+  test("remap_alphabet") {
+    val d1 = "abracadabra"
+    val d2 = "bracaabraca"
+    val b1 = new BwtIndex(data=d1.getBytes)
+    val b2 = new BwtIndex(data=d2.getBytes)
+    
+    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+    val (remapped,k) = BWTMerger.remap_alphabet(b1,gt_eof)
+    // 2,3,6,2,4,2,5,0,3,6,1
+    // a b r a c a d a b r a
+    assert(remapped.sameElements(Array(2,3,6,2,4,2,5,0,3,6,1)))
+    //println(BWTMerger.remap_alphabet(b1,gt_eof).mkString(","))
+
+    val sa = new SAISIntBuilder(new IntArrayWrapper(remapped),k)
+    sa.build()
+
+  }
+
+  
+
   test("SAIS0FreeBuilder calcGTTN direct test") {
     val d2 = "daxecedaddbadxcdexdbaexacbcxaecbecbcaaaxbcbexeedbacbaebxdxadbxaxccbcxacdexabcddbccedaxcxecaxxacbbdbx"
     val sa = new SAIS0FreeBuilder(d2.getBytes)
@@ -622,9 +643,27 @@ class BWTMerge extends FunSuite with RandomGenerator {
     }
   }
 
+  
+  test("compute_gt_eof abit larger2") {
+    val d1 = "eecedebxedxdacebddbbdxxxdcdadxeecbeabeaebbcbddbdbddbbxaabbadaccxxdecxeabbedxabxeecdebcadeedadbbbxece"
+    val d2 = "abdxcbbdccdeecexbbxecdbaeeeaeecxacxxcdcdadedddxbxdxxaedbcdbcbxdaedeaecbxdecxccbcxdebcxbxcdbxabbdbxda"
+    val b1 = new BwtIndex(data=d1.getBytes)
+    val b2 = new BwtIndex(data=d2.getBytes)
+    
+    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
+    //println(gt_eof.mkString(","))
+    for ( i <- 0 until d1.length) {
+      val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
+      //println(s1,d2,s1>d2)
+      assert((s1>d2) == gt_eof(i),"s1=%s,d2=%s,s1>d2 = %s != gt_eof(i=%d) = %s" format (
+        s1,d2,s1>d2,i,gt_eof(i))
+      )
+    }
+  }
+
 
   test("compute_gt_eof random") {
-    val c = 1
+    val c = 100
     for ( i<- 0 until c ) {
       val d1 = randomString("abcdex")(100)
       val d2 = randomString("abcdex")(100)
@@ -647,21 +686,38 @@ class BWTMerge extends FunSuite with RandomGenerator {
 }
 
 class BadTest extends FunSuite with RandomGenerator {
-  
-  test("compute_gt_eof abit larger2") {
-    val d1 = "eecedebxedxdacebddbbdxxxdcdadxeecbeabeaebbcbddbdbddbbxaabbadaccxxdecxeabbedxabxeecdebcadeedadbbbxece"
-    val d2 = "abdxcbbdccdeecexbbxecdbaeeeaeecxacxxcdcdadedddxbxdxxaedbcdbcbxdaedeaecbxdecxccbcxdebcxbxcdbxabbdbxda"
-    val b1 = new BwtIndex(data=d1.getBytes)
-    val b2 = new BwtIndex(data=d2.getBytes)
+  test("BWTMerger.build") {
+    val d1 = "barbaarbadaacarb"
+    val d2 = "abaacarbadacarba"
+    val bwt1 = new BwtIndex(data=d1.getBytes)
+    val bwt2 = new BwtIndex(data=d2.getBytes)
     
-    val gt_eof=BWTMerger.compute_gt_eof(b1,b2)
-    //println(gt_eof.mkString(","))
-    for ( i <- 0 until d1.length) {
-      val s1 = (d1 + d2).substring(i,d1.length+d2.length-1)
-      //println(s1,d2,s1>d2)
-      assert((s1>d2) == gt_eof(i),"s1=%s,d2=%s,s1>d2 = %s != gt_eof(i=%d) = %s" format (
-        s1,d2,s1>d2,i,gt_eof(i))
-      )
-    }
+    assert(bwt2.GT_TN.mkString(",") == 
+      "false,true,false,true,true,true,true,true,true,true,true,true,true,true,true,false")
+        
+    val gt_eof = BWTMerger.compute_gt_eof(bwt1,bwt2)
+    assert(gt_eof.mkString(",") == 
+      "true,true,true,true,false,true,true,true,true,true,false,true,true,true,true,true")
+
+    val (remapped,k) = BWTMerger.remap_alphabet(bwt1,gt_eof)
+
+    assert(k==7)
+    assert(remapped.mkString(",")=="3,0,6,1,0,0,6,3,0,5,0,0,4,0,6,2")
+    
+    val sa = new SAISIntBuilder(new IntArrayWrapper(remapped),k)
+    sa.build()
+    assert(sa.SA.mkString(",")=="10,4,11,8,1,13,5,3,15,7,0,12,9,2,14,6")
+
+    val ranks = sa.convertSA2Rank(sa.SA)
+    
+    assert(ranks.mkString(",")=="10,4,13,7,1,6,15,9,3,12,0,2,11,5,14,8")
+
+    val bwt = bwt1.sa2bwt(sa.SA)
+    assert( bwt.map(_.toChar).mkString("")   == "dbabbcarrrbaaaaa" )
+
+    BWTMerger.suf_insert_bwt(bwt,bwt1,bwt2)
+    BWTMerger.build(bwt1,bwt2)
+    
   }
+
 }

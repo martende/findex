@@ -63,6 +63,17 @@ class SAISIntBuilder(_s:ArrayWrapper[Int],_k:Int) extends SAISAlgo[Int] {
       }
     }
   }
+  
+  def convertSA2Rank(sa:Array[Int]) = {
+    val r = new Array[Int](sa.length)
+    var i = 0
+    val n = sa.length
+    while ( i < n) {
+      r(sa(i))=i
+      i+=1
+    }
+    r
+  }
 
   // find the lexicographic names of all substrings
   // n1 - start
