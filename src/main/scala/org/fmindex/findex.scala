@@ -134,9 +134,16 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
       for (i <- 0 until length ) {
         C(S(i))+=1
       }
+      var tot = 0
+      for (i <- 1 until K ) {
+        bs(i)=tot
+        tot+=C(i)
+      }
+      /*
       for (i <- 1 until K ) {
         bs(i)=bs(i-1)+C(i)
       }
+      */
       bs
     } else {
        throw new Exception("bucketStarts can't be loaded") 
@@ -210,13 +217,24 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
     val n = sa.length-1
     val bwt = new Array[Byte](n)
     var i = 0
-
+    var rank0 = -1
     while ( i < n ) {
       var j = sa(i+1) - 1
-      if ( j < 0) j = n-1
+      if ( j < 0) {
+        rank0 = i
+        j = n -1 
+      }
       bwt(i)=S(j)
       i+=1
     }
+
+    // Why its not just smthng else 
+    // take care of the position where the eof symbol should go
+    // writing a nearby symbol to help (run-length) compression 
+
+    assert(rank0>0)
+    bwt(rank0) = bwt(rank0-1)
+
     bwt
   }
 

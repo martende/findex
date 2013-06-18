@@ -845,7 +845,7 @@ class BadTest extends FunSuite with RandomGenerator {
   
 
   
-  
+  /*
   test("BWTMerger.build") {
     // Added Part
     val d1 = "gfvqkjxagtnmfgyhbjvmqyduwnnorggfspqegvwedansfmfbitwdkimwrpsqcdcwzwkqnzgoegqvskomwehejjzthjqthakgqahqjgteijggfznhzcnvywrsezlhuclnhrronplyfhiaagxtlqqpjoowfbcocowohmdvahvvmgfqwgpzodvzltungfzdjcfbvdpghapgdczauccofzrvwpqjgdorlssvqanidwqlcasoosnquaznjqyrqhtdbjdoknerrenjyrejsjyunbsuhzgcgcuriyechvuhznzwqdovregoacrsrqomkmahgvwgmsaencjytpictgrvimvzaqupsdywwfhzrjistdsehykvjtrurbmitenkxctnvsncsohfxobcftigsudsfanqvrspkachfwulevgjozdtrowyyznknqxusxypypvqlwzpxqsawnimwjnkwbxkndpgwubsaedumbevtyyqtglmhfjfybexsbvtzkrvgwmxfbrxassyalxubkzsypamtwjfssihofplbfbymrytciofpprovoygwfmzynxjhozgtuqcqbjpvxrgygvujfpdidxpvaarjlblguyovrikuxemypitxhkoezggbmwlcdkkedqxosumwwpnsjfhwxbdkttkeaspaxssymuerkzeeuypghsdkhdrdnbrzyzrpqxtqvuhrymxilludlclzdkjgkuabgatwibkrgkwwehvakbtjdxithpjhbvggghxygfszuetacqaysyekvlyeiqingjtkslwjtcebespcshhaixphlgdifjkibdqzhvgkmbipuxohsofaeigbywbdlrgxgrwzuquhbkwcxjqsqpflaiyzcsycelkhhkethrkfggbrihiiuoqswsbijfacdkyhjjqchvyjvuoezmdarzsabrtblbzalcchhaecvxdvrwuntmwdgbbtjhbsqqtryxksgmtonnzdqdpbzbhvmcighihgqoldvsxfhxlwjyfhongjszg"
@@ -899,5 +899,90 @@ class BadTest extends FunSuite with RandomGenerator {
       }
     }
   }
-  
+  */
+  test("BWTMerger.build.OF") {
+    // Added Part
+    val d1 = "dmbrrlwquggscrxmlqhbthpvqpccggedmiiuhwkugzvvcoaidwukjndzrggenybtxnhzewxfrpmfqbvidcuqppyimdjopzkqeepqkoysvktfvcjhfgmagfceoxwxwrfcpsomedsprbdkdzfyaidpeqejiirehsftrvftpnosrbbdwqsiibrzkbghqkkdtzqqgylomrmvcaevemhryuunlfeicakcocuhhneftmbdrnrtlhlaqucsgoutcaxhgbdpdqoqwjexhwynitbnrstxvseybzymijnfcskrzsiwsoelxtmrzzgcoqkvjhhyrnpeabgqbwdktlmbouwxoxtrpuuvetdergqfwdbsmwkaiuubiwaibsgkqjzbfvdovjhkciinbvlnpwhbnlsvpmwrliounhttpyziliwqgctzppupwyvdcxhnpiyqwjblggeulgcdtzzztrkpimjindrzkvpmhjfnchfvdgvimhrskngozynqrcytsufilaykzsymnythtmpmyeoishybfgckyttgvwufondqmffpyqiaqnrlchotunbigkdnvtqymbsshxxcjwkgtxokamvdoxupmmomyjrkcxjoiaspqpnoztdnjnrsbgrnofdkmixgwclcymkrcrmaurdbtuomdjbcvetwnduroxbczpvnwubqxqusylohjtkbhpupqdqhdkjstflvayszfmyammhxomkvgbcgkhgqjhfjsirphkgmnvgceowlrotjvtfazmczbqtcgstfvlbgpxqmnsdawsvqoyiilbsmbvvjokxhnusthyqbhrhvbkbtehtvegsxxjwmlujtrowoxskinhfahiegkaezvrjqnbsigpuusflioemmgobeziizwfmstqabvweprtgdqzlvvrwhnqnuynuoavbqrytqbgfopzuvnavdlehfviofzdqyhxtnqbrxafzgfvmrjfbqfrstcajkkggtdmpawtikjukeumeikuooyhxwaphkhjnagqbaiozrpzyn"
+    // old Part
+    val d2 = "uexmskeanytsljkujjpzjerzfjybohylttnxdtwjxeapudycsqtutuqgscdlpqtaqadxqwkokeaeylzbhkdrrcrxroixlodjjmgungyoehlnhlmcjaackicemmmxaehbvbchbhtmldfcikyzcfgqtviwzjpebtuaygnmpoambsbjhtekmoexqnolkphpzzzfgicfsbwljvavutuekegiobwhxuieruntdpadabrtemfqhhsgbbhpfeirfczbstoxesmyapxkrvwesixntlwihwjkajnentkvnjkvmqgvuhiyacrgstcockwrlohaaxfnkvdpdezfmtklggjemzpjrnakdxbfgijvlvidnlyqhjwllvumeixynjosngcakumzdkmuksrkyfcznvvnmcenvksyujfwubgpgcbujwapflxfwxvwplzfilwyvdspmpzipyfptgbkuslqkrdsnvrmwhptcbhrlswvzxzpczjxkuoecvlmooxnhsojhfbmrwbdihympbtsagytrhmjmamhfyymxzxhzpiquirwgafxgvwugvgndwnmcmkszzoiddspoxouznkuxpsdavpeigufarscdpymjnqufgdnlhgaouysnqkdaosjeezyffyjwzzdrbdevcgqlketqyljtldyropcgnmuorsjinagieukisgyjsfxhivedoqorykpeyjkglzqnmcbsezxzevypffbspaifwgxjdgahupdrmiqypisslzdcaehaabqxxayhdmeexzlsyibsoknrfsgczhlchysqlwazgjsykmybajtnxkorxjusuphlgoqavnbkwdrvqapmhnhjzpbvxgcswgnkgeqwsanimyryrxujjhhqitlkorlzetwfcgxrkyvtmrjzgbknlvcxolwkyopzflepisiwiazajrtzbeqwbxdfpwjflmmsseewuudgfbtzqenjqafwzcnfanycigwsflfvxojxpqhhzekjdkhgsptqveavquuoqujbezdkarayoml"
+    val bwt1 = new BwtIndex(data=d1.getBytes.reverse)
+    val bwt2 = new BwtIndex(data=d2.getBytes.reverse)
+    
+    val gt_eof = BWTMerger.compute_gt_eof(bwt1,bwt2)
+
+    val (remapped,k) = BWTMerger.remap_alphabet2(bwt1,gt_eof)
+    
+    val tremap = "15,26,27,17,19,27,16,10,0,1,18,8,0,15,11,9,12,9,17,0,24,25,9,26,16,16,22,12,10,6,14,22,6,12,22,11,12,10,21,24,0,17,14,5,21,8,8,12,12,11,0,2,21,20,19,7,18,1,7,11,19,14,23,7,8,27,7,0,25,19,1,18,15,21,25,9,26,18,5,27,7,16,10,23,7,9,6,13,5,23,0,15,23,22,27,17,16,7,8,1,18,21,26,19,18,1,23,0,16,22,15,26,22,15,18,15,9,24,19,23,23,13,27,18,3,8,21,19,17,6,24,23,1,0,18,21,20,14,7,24,27,10,10,27,6,1,16,8,14,14,6,16,10,13,7,20,22,22,17,8,10,20,1,15,18,11,19,23,27,6,0,12,8,6,10,9,0,7,9,15,10,12,20,25,16,24,16,19,21,11,22,13,14,24,11,25,25,20,8,6,23,21,9,6,21,1,12,1,23,9,19,9,1,18,26,9,21,20,22,15,9,25,12,16,11,23,23,1,14,20,1,13,10,10,26,16,18,23,20,24,0,5,20,15,14,18,25,17,8,1,13,23,7,21,20,8,2,21,18,1,27,2,14,27,0,7,21,23,11,21,16,19,13,24,16,6,2,8,23,15,14,8,12,9,17,19,10,20,11,7,9,11,18,8,9,12,8,2,1,8,23,12,14,16,25,9,14,14,0,26,14,7,27,20,26,0,23,13,7,21,20,11,12,3,9,18,5,18,17,22,17,9,1,12,21,11,9,16,13,26,20,22,18,25,18,1,22,24,15,23,17,27,2,1,25,16,19,22,5,15,24,21,6,23,2,1,11,5,14,16,22,21,1,5,19,22,0,14,19,2,19,12,14,26,2,13,2,24,8,25,10,14,12,3,7,16,15,19,8,1,20,19,15,11,15,5,21,27,16,15,17,18,17,20,0,10,16,11,25,2,12,19,11,26,14,16,14,14,17,22,25,16,5,23,14,0,12,16,25,21,8,12,24,11,2,25,25,9,20,20,1,14,26,18,21,23,15,3,12,8,10,1,15,22,21,16,9,2,13,19,15,18,0,10,18,26,17,7,7,14,18,5,15,16,7,22,24,23,8,21,21,26,12,2,8,7,1,26,9,20,10,16,6,26,14,17,14,21,9,21,26,15,14,26,20,27,12,26,0,13,10,7,22,20,21,26,2,19,18,15,26,27,16,8,15,12,20,19,9,14,10,23,8,5,23,7,9,2,15,7,11,9,14,17,23,12,27,19,5,15,10,11,14,10,17,12,19,21,27,27,27,21,3,2,8,13,22,6,8,8,13,1,11,24,18,26,10,17,15,9,25,2,5,23,26,24,17,22,17,17,27,21,2,8,18,24,10,13,10,27,26,17,21,21,9,15,22,16,10,13,19,24,14,17,23,20,13,15,1,9,24,17,15,13,23,1,15,10,10,2,12,9,11,23,16,5,23,7,1,27,11,18,12,8,20,1,10,0,24,10,1,22,22,10,0,12,24,14,20,1,5,24,7,18,8,19,6,5,21,6,23,22,22,17,19,21,25,16,25,24,22,16,1,14,13,21,12,5,24,1,18,8,1,0,6,17,15,19,26,9,9,11,23,12,18,16,2,8,27,27,19,14,21,25,13,6,16,20,24,10,20,27,19,12,20,2,7,15,11,10,14,26,27,1,26,6,20,23,25,21,20,19,15,1,21,10,15,26,24,9,25,6,11,24,18,16,18,5,17,3,1,8,9,25,0,2,21,22,16,8,20,2,22,18,0,13,9,13,21,19,15,19,3,1,14,21,7,6,15,9,9,22,2,16,2,12,0,2,10,6,7,13,15,22,22,26,19,9,14,6,23,6,0,2,23,14,19,14,16,13,26,8,18,18,27,21,3,12,12,18,9,8,1,12,27,19,1,10,10,20,18,24,3,1,1,19,20,16,15,17,21,7,23,19,21,7,20,9,6,19,10,10,11,6,18,6,17,3,10,0,26,7,27,3,12,3,1,19,17,20,3,6,14,16,20,17,2,7,19,24,25,24,25,16,6,2,7,8,0,14,8,7,9,11,2,23,7,21,12,23,20,26,16,12,18,17,6,6,18,12,27,17,16,11,5,14,10,26,17,17,18,22,2,3,10,23,1,18,7,14,17,19,7,25,24,6,27,9,15,25,21,1,26,15,6,8,8,19,27,5,15,11,12,22,24,3,10,0,16,2,23,23,27,8,22,12,24,9,22,10,10,14,3,6,8,8,2,2,17,18,23,17,9,21,1,9,18,13,14,25,19,2,20,8,8,22,18,24,13,19,19,1,14,4"
+    val tremap_ints = tremap.split(",").map({_.toInt})
+
+    for (i <- 0 until tremap_ints.length) {
+      assert( remapped(i) == (tremap_ints(i) +1) ,"remapped %d. %d != %d".format(i,remapped(i),tremap_ints(i)+1))
+    }
+
+    val sa = new SAISIntBuilder(new IntArrayWrapper(remapped),k)
+    sa.build()
+
+    val test_SA = "8,806,50,774,822,240,703,176,264,414,472,170,435,664,784,518,908,376,12,90,977,107,40,133,315,657,19,67,879,308,702,132,853,372,669,57,770,298,1004,628,655,846,365,581,205,332,842,230,249,1021,692,227,793,450,635,162,461,145,946,9,699,70,99,212,886,854,399,753,660,345,105,207,353,743,496,961,259,648,297,364,352,996,942,591,905,735,896,493,573,602,276,716,807,804,639,419,384,467,261,547,802,997,379,526,1011,256,51,775,781,914,823,979,386,444,852,769,792,885,572,992,890,393,124,323,975,877,943,883,457,836,1023,934,367,558,969,481,358,767,326,373,241,677,43,405,88,645,543,432,592,697,670,78,821,169,144,904,275,676,926,809,993,577,964,173,761,32,86,891,29,797,150,725,875,704,873,927,868,745,203,362,819,199,679,129,502,955,66,495,647,796,477,906,97,63,545,84,911,289,177,549,58,810,948,478,736,80,394,55,672,897,865,154,916,252,318,265,521,484,861,138,952,881,311,907,11,701,841,248,98,398,296,995,255,542,172,198,494,910,994,45,578,965,1013,293,771,459,159,281,46,440,579,574,147,533,831,603,674,966,653,779,125,488,983,1014,299,277,388,64,717,175,331,211,466,546,85,867,202,840,709,799,912,290,710,641,294,15,786,817,538,305,551,178,614,957,336,17,283,324,1005,209,498,447,1002,215,508,800,987,629,116,772,589,759,220,22,75,7,663,976,656,878,460,659,638,808,28,520,174,637,870,989,847,232,141,871,560,180,152,606,618,990,390,739,755,500,415,563,586,473,160,286,848,729,37,944,82,540,233,936,142,608,49,913,443,933,366,872,288,14,550,335,738,321,35,971,561,403,291,650,59,165,268,189,711,642,224,762,582,417,194,422,805,206,492,884,392,322,696,295,171,458,652,640,16,282,27,36,48,47,837,301,381,222,436,838,713,923,420,565,733,535,181,333,33,972,918,985,441,665,516,929,843,555,580,385,87,724,153,317,785,519,231,607,191,1007,626,811,468,1018,619,694,787,575,633,250,272,829,338,121,434,307,991,1022,42,149,818,137,310,909,280,562,539,935,391,693,306,148,426,827,424,892,368,302,504,949,427,552,622,479,244,377,825,667,228,794,506,721,30,61,192,1008,382,451,512,740,262,627,752,456,404,963,548,798,115,588,219,636,559,179,13,737,970,402,534,632,279,243,511,482,409,858,470,163,113,790,396,706,72,615,462,812,348,91,359,958,110,756,529,0,691,715,803,978,644,431,903,274,501,96,483,146,532,778,465,6,151,617,81,932,223,416,922,828,337,425,408,857,395,24,765,235,270,186,355,893,726,25,108,369,184,303,437,687,18,895,768,876,925,128,476,247,158,330,1001,564,41,505,587,631,705,95,931,938,598,410,939,998,950,284,683,3,412,888,859,611,328,596,428,553,623,350,599,471,783,56,344,104,258,123,480,766,325,77,874,947,10,700,292,673,839,164,651,928,1006,114,71,528,714,764,924,411,327,832,134,453,100,940,999,236,850,604,1016,245,342,213,584,474,833,845,1020,69,378,1010,791,557,675,54,951,397,210,816,537,869,285,421,380,732,271,826,720,60,751,401,469,789,127,887,103,527,1019,855,863,187,684,566,374,356,118,166,620,898,707,967,4,413,668,654,229,449,161,734,780,889,254,197,1012,866,499,287,320,625,136,242,856,894,849,53,536,750,400,448,523,217,340,155,746,238,727,182,313,920,514,730,371,1003,204,960,601,571,835,361,678,795,864,860,44,439,201,613,507,754,334,188,695,917,464,269,257,788,126,253,319,135,52,749,216,612,489,776,266,454,38,73,722,685,524,490,509,101,406,567,375,941,801,357,576,31,662,988,34,26,984,190,218,112,109,690,777,616,157,329,597,682,782,1015,341,522,370,463,661,156,681,813,973,346,485,429,814,93,89,106,131,226,634,945,363,820,646,62,544,83,915,251,541,487,208,267,300,712,554,316,120,433,824,455,278,643,1000,349,862,624,237,919,200,680,92,225,119,980,747,593,167,981,239,39,698,851,974,954,671,387,986,758,658,605,728,442,193,1017,621,666,347,273,185,630,595,763,583,117,360,689,130,486,20,901,899,139,773,590,418,760,304,446,21,74,389,221,723,430,902,354,183,686,246,343,68,1009,196,959,438,748,953,688,900,445,195,517,314,383,525,744,880,830,708,497,214,585,491,309,423,503,962,510,921,23,234,475,937,610,76,452,815,102,339,513,111,757,594,741,530,1,263,742,351,260,882,968,168,143,65,79,982,956,140,649,515,531,5,407,94,930,2,122,844,556,731,719,312,600,570,834,609,718,569,568"
+    val test_SA_ints = test_SA.split(",").map { _.toInt }
+
+    for (i <- 0 until test_SA_ints.length) {
+      if ( test_SA_ints(i) != sa.SA(i + 1 )) {
+        assert(false,"Problemma %d. %d != %d".format(i, test_SA_ints(i),sa.SA(i + 1 )))
+      }
+    }
+    
+    val ranks = sa.convertSA2Rank(sa.SA) map { _ - 1 }
+    val test_ranks = "547,989,1010,619,722,1006,563,315,0,59,644,224,18,518,367,285,402,295,592,26,922,932,313,973,577,585,819,404,324,168,496,815,165,422,818,372,405,352,800,893,22,604,462,142,774,239,248,407,406,360,2,106,792,745,685,207,633,35,200,378,699,497,857,193,267,998,186,27,944,679,61,654,536,801,933,314,978,641,151,999,205,566,354,859,195,274,166,434,144,848,19,541,884,847,1008,609,557,192,228,62,664,807,981,706,635,70,849,21,586,824,544,984,823,532,653,512,308,917,716,886,870,457,1011,637,122,260,788,704,597,183,920,850,31,23,662,791,740,465,219,925,1002,332,358,997,154,57,559,252,475,463,170,564,336,436,211,753,839,828,600,246,348,728,55,531,649,379,717,890,996,153,11,398,234,163,326,269,7,198,291,517,335,420,757,940,588,912,581,711,781,381,821,442,498,906,388,954,946,733,235,181,882,776,276,178,764,44,391,71,864,299,688,271,63,673,964,303,794,751,822,514,312,935,411,568,384,885,851,51,492,726,47,440,331,356,974,579,667,880,755,892,5,140,741,525,488,671,942,599,227,48,453,861,213,789,732,232,105,786,636,76,993,98,504,990,8,215,798,865,380,785,580,696,454,911,555,156,90,265,874,524,468,247,403,296,617,692,349,737,366,197,281,376,646,243,284,397,230,78,37,264,866,409,481,589,930,289,474,459,29,967,466,222,1016,758,956,24,869,437,214,790,738,371,395,123,297,640,138,660,624,829,601,270,45,421,780,369,294,572,456,982,752,834,672,943,634,69,843,910,540,877,629,992,80,72,939,582,715,813,136,542,918,769,179,854,79,42,364,132,480,587,836,762,33,139,714,810,17,489,680,102,694,410,500,957,96,433,112,899,266,934,340,472,394,121,206,576,534,687,229,66,748,701,521,375,508,143,808,1007,574,528,613,659,620,723,9,344,569,387,928,95,416,693,389,968,478,573,476,484,626,845,937,553,147,871,458,12,412,590,948,775,249,426,905,362,113,953,931,301,749,727,53,501,979,663,799,873,507,128,399,245,320,56,538,837,784,562,272,97,446,702,530,631,10,347,675,975,598,190,203,487,638,135,527,558,217,844,921,863,261,796,805,966,392,87,236,187,74,963,300,736,343,556,184,969,482,605,494,778,304,806,971,526,502,983,760,1004,428,955,15,439,325,216,835,750,804,958,103,707,655,546,988,1005,560,253,522,419,746,690,288,470,355,862,233,146,858,194,273,99,510,199,368,290,485,627,868,431,1013,683,133,516,334,374,469,345,603,417,713,809,1023,1022,1018,767,118,88,251,451,814,161,240,250,432,43,386,916,674,965,346,606,513,310,927,83,148,889,986,914,625,830,612,630,1017,766,89,255,669,903,337,441,359,1020,977,623,795,777,292,537,827,565,338,448,718,908,486,628,879,739,444,505,39,307,913,607,523,452,852,54,515,327,322,94,401,283,383,875,552,145,856,188,77,1003,377,650,400,258,725,40,318,25,902,321,68,838,816,316,13,427,909,491,724,34,150,898,208,647,256,684,157,141,770,182,883,840,831,618,712,803,941,591,951,919,825,548,50,473,449,782,396,149,894,60,645,225,30,6,173,608,535,720,962,278,282,382,867,414,656,549,91,268,1021,1015,698,495,802,936,435,171,584,756,904,351,761,1014,695,418,729,85,204,519,370,341,503,987,991,73,959,177,754,888,949,793,747,700,506,67,779,342,545,985,901,311,929,164,385,915,657,578,639,137,594,115,36,244,309,926,3,107,797,826,561,259,730,108,832,632,14,438,286,450,787,703,533,682,116,52,493,771,189,169,511,279,305,812,100,550,93,390,1,92,323,159,201,445,539,841,846,980,689,287,464,180,855,152,4,110,872,490,697,477,571,455,961,254,661,676,1019,768,129,408,413,648,277,226,46,430,1012,677,41,330,350,744,668,895,114,32,65,709,742,575,529,622,773,218,878,710,772,210,735,275,176,691,328,333,365,174,642,172,595,125,319,28,960,221,994,127,393,117,64,705,621,731,120,167,479,583,743,593,86,209,719,924,952,923,938,554,155,84,191,223,16,467,237,196,280,361,109,860,212,783,424,881,759,972,570,415,658,596,158,175,651,429,1009,610,567,363,131,471,357,976,611,614,665,811,82,126,353,853,58,643,202,483,616,686,220,950,897,185,1001,293,543,947,765,75,970,509,162,241,257,721,995,134,520,373,423,842,896,124,317,20,551,111,887,891,1000,262,820,425,900,306,817,329,339,460,119,160,238,231,81,101,615,666,876,602,302,763,38,298,652,443,499,945,681,104,734,242,263,833,670,907,447,708,678,49,461,130"
+    val test_ranks_ints = test_ranks.split(",").map { _.toInt }
+
+    for (i <- 0 until test_ranks_ints.length) {
+      if ( test_ranks_ints(i) != ranks(i  )) {
+        assert(false,"Problemma %d. %d != %d".format(i, test_ranks_ints(i),ranks(i )))
+      }
+    }
+
+    val bwt = (bwt1.sa2bwt2(sa.SA).map {_.toChar}).mkString("")
+
+    val ts = "ikjxewbhzsqemiqygugvivwbyipfimgvdtsqdctnsrclthgsgrovdsvsievawrghdbgniqqkczftqfgvzguxespkdteoaoixyhzhucryrgaasjaoljwprktmskqkwpczntmjjrzquqqbaemnlogockbqvzzoorpidungxuhdifmlqajehyhtmgtpowzgvtpcovvvgjanbeqfczdrwctlvvlaiotmrymfqqhpfrkgsvkscmeteesqbkpmgtgcooycqgkodvzgbcwfciproffstqynffhkgjlrrxjftzjkkdbvyxpythwbngnwnxxoudbdgwicklenrublzinnowoixjtsamyagriwkdomimilkhwobisnftnsuninhzfqvthhoebowrcbydmjthadqchgujkgdvrxakvocprnibejtugazqbvgcexivaabiuqsfcwimhgnbroovvmibpmhsyanjhdibhgoryedkyfmhwfnavwbbprerllkbniclrvjyceqpubdhafdrgpvsydoorburopqhblwadhuiqquqcavxxwipnbzutzeufpkiymhmzsfyqytwxmeoamxmkxhsdeqryxuuviamiwezzyunpcmhuzqrnyqwmmmvpnufxrtzmohyebbbjfknjehnbrkwkpdgaybpposgumubwiqzrxmxnzgspnhysepkczomzjsslttbyclbvopkdowjlfngppmgmsikgptxcfhitvtdroitktbhutyfevokzvyiuhexzzzwdmrpdxvtmbkrlfujclgffqcxhpgcfqinmrsthqdrrqhrlmuhkogjsyowtnuppucgsfonbsvnkbfpuvdbwvlieedmdicliwbtgjpavdctgjqnfpqkeenjrcsdrvstdquxdckyaqskmqrkulohyjjhnxeuaxrfhhjhoxwtghtuwbstqqamxnovfowcjksmtbalrbqqtajebtshiqizhmutlmnnvmnnmypbfrvigdvewbsyrtukylkkszfpzqigzt"
+    for (i <- 0 until ts.length) {
+      if ( ts(i) != bwt(i)) {
+        printf("%d. SHOULD:%c != IS:%c SA=%d\n",i,ts(i),bwt(i),sa.SA(i+1))
+        assert(false)
+      }
+    }
+
+    val start_sa_range = Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,30,78,114,152,186,223,269,315,360,390,432,458,505,548,592,631,677,723,762,810,848,892,926,955,990,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024,1024)
+
+    for (i <- 0 until (start_sa_range.length min bwt1.bucketStarts.length) ) {
+      if ( start_sa_range(i) != bwt1.bucketStarts(i)) {
+        printf("%d. SHOULD:%d != IS:%d \n",i,start_sa_range(i),bwt1.bucketStarts(i))
+        assert(false)
+      }
+    }
+
+    /*
+    compute_prefix_rank - cur_rank - 1 = 809 c = e rank = 27 
+    compute_prefix_rank - cur_rank - 1 = 178 c = x rank = 4 
+    compute_prefix_rank - cur_rank - 1 = 929 c = m rank = 41 
+    compute_prefix_rank - cur_rank - 1 = 498 c = s rank = 18 
+    compute_prefix_rank - cur_rank - 1 = 740 c = k rank = 29 
+    compute_prefix_rank - cur_rank - 1 = 418 c = e rank = 13 
+    compute_prefix_rank - cur_rank - 1 = 164 c = a rank = 6 
+    compute_prefix_rank - cur_rank - 1 = 5 c = n rank = 0 
+    compute_prefix_rank - cur_rank - 1 = 504 c = y rank = 15 
+    compute_prefix_rank - cur_rank - 1 = 969 c = t rank = 44 
+    */
+
+    var i = 0
+    var c = d2(i)
+    var cur_rank = bwt1.bucketStarts(c)
+    printf("compute_prefix_rank0 c=%c cur_rank=%d\n",c,cur_rank)
+    
+    i+=1
+    c = d2(i)
+    cur_rank = bwt1.bucketStarts(c) + bwt1.occ(c.toByte,cur_rank-1)
+
+    printf("compute_prefix_rank c=%c cur_rank=%d\n",c,cur_rank)
+
+  }
 }
