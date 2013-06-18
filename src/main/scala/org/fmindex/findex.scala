@@ -205,6 +205,20 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
     }
     bwt
   }
+  
+  def sa2bwt2(sa:Array[Int]):Array[Byte] = {
+    val n = sa.length-1
+    val bwt = new Array[Byte](n)
+    var i = 0
+
+    while ( i < n ) {
+      var j = sa(i+1) - 1
+      if ( j < 0) j = n-1
+      bwt(i)=S(j)
+      i+=1
+    }
+    bwt
+  }
 
   def savePlain() = {
     val fs = new java.io.FileOutputStream(plainTextFile)
@@ -212,8 +226,14 @@ class BwtIndex(filename:String=null,data:Array[Byte]=null,partial_len:Int = -1) 
     fs.close()
   }
 
+  def occ(c:Byte,i:Int) = {
+    if ( sa == null) buildBWT()
+    sa.occ(c,i)
+  }
+  var sa:SAIS0FreeBuilder = null
+
   def buildBWT() = {
-    val sa = new SAIS0FreeBuilder(S.data)
+    sa = new SAIS0FreeBuilder(S.data)
     sa.build()
     if ( filename != null ) {
       sa.writeBWT(bwtIndexFile)
@@ -332,11 +352,67 @@ object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
     (create_mapped_string(map),asize)
   }
 
+  def remap_alphabet2(bwt1:BwtIndex,gt_eof:Array[Boolean]) = {
+    
+    def create_occ() = {
+      val t = bwt1.S
+      val n = bwt1.length - 1
+      val occ = new Array[Int](bwt1.K+2)
+      var i = 0
+      while ( i < n ) {
+        if ( t(i) < t(n) || ( t(i) == t(n) && ! gt_eof(i+1)) ) {
+          occ(t(i))+=1
+        } else {
+          occ(t(i)+2)+=1
+        }
+        i+=1
+      }
+      occ(t(n)+1)+=1
+      occ
+    }
+    def create_map(occ:Array[Int]) = {
+      val map = new Array[Int](bwt1.K+2)
+      val oclen = occ.length
+      var asize = 1
+      var i = 0
+      while (i < oclen) {
+        if ( occ(i)>0) {
+          map(i)=asize
+          asize+=1
+        } else {
+          map(i)=oclen
+        }
+        i+=1
+      }
+      (map,asize)
+    }
+    def create_mapped_string(map:Array[Int]) = {
+      var i = 0
+      val n = bwt1.length
+      val n_1 = n -1 
+      val t = bwt1.S
+      val newt = new Array[Int](n+1)
+      while ( i < n ) {
+        val c = if ( i == n - 1 ) t(i)+1 
+          else if ( t(i) < t(n_1) || ( t(i) == t(n_1) && ! gt_eof(i+1) ) ) t(i)
+          else t(i)+2
+        newt(i) = map(c)
+        i+=1
+      }
+      newt(n)=0
+      newt
+    }
+    val occ = create_occ()
+    val (map,asize) = create_map(occ)
+    (create_mapped_string(map),asize)
+  }
+
   def suf_insert_bwt(bwt:Array[Byte],bwt1:BwtIndex,bwt2:BwtIndex) {
     val gaps = new Array[Int](bwt.length)
     var pfxBuffer:List[Byte] = List()
-
-    var c = bwt2.S(0)
+    val n = bwt2.length
+    var c = bwt2.S(n-1)
+    var i = 1
 
     pfxBuffer = c.toByte :: pfxBuffer 
     gaps(0)=1
@@ -344,17 +420,15 @@ object BWTMerger /*extends BWTBuilder[Byte] with BWTDebugging[Byte]*/ {
     val start_sa_range = bwt1.bucketStarts
     var cur_rank = start_sa_range(c)
     gaps(cur_rank)+=1
-    val n = bwt1.length
-
+    
     while ( i < n) {
-      c = bwt2.S(i)
-      cfirst = start_sa_range[c]
-      old = cur_rank
+      c = bwt2.S(n-i)
+      val cfirst = start_sa_range(c)
       cur_rank = if (cur_rank==0) cfirst
-      else cfirst + calcRank(bwt,cur_rank-1,)
+      else cfirst + bwt1.occ(c.toByte,i)
+      gaps(cur_rank)+=1
       i+=1
     }
-    println(bwt1.bucketStarts.mkString(","),cur_rank)
   }
 
   def build(bwt1:BwtIndex,bwt2:BwtIndex,debug:Boolean=false)  {
