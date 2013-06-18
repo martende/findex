@@ -29,6 +29,29 @@ trait RandomGenerator {
   //def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
 
+  def testSA(s:Array[Int],sa:Array[Int],verbose:Boolean=false) {
+    for ( i <- 0 until sa.length - 1 ) {
+      val a = s.slice(sa(i),s.length)
+      val b = s.slice(sa(i+1),s.length)
+      val l = a.length min b.length
+      var j = 0
+      
+      while ( j < l) {
+        if ( a(j) < b(j)) {
+          j=l+1
+        } else if ( a(j)> b(j)) {
+          printf("BAD a(%d)  > b(%d) on j = %d %d %d\n",i,i+1,j,a(j),b(j))
+          if ( verbose ) {
+            println("a="+a.mkString("."))
+            println("b="+b.mkString("."))
+          }
+          j=l+1
+        }
+        j+=1
+      }
+    }
+  }
+
 }
 
 class BasicTests extends FunSuite with RandomGenerator {
@@ -311,6 +334,58 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert (sa.getPrevRange(0,16,'a')==Some((1,6)) )
     assert (sa.getPrevRange(1,6,'b')==Some((6,8)) )
   }
+
+  test("reducing bug example") {
+    val d = Array[Byte](18,6,17,11,3,22,27,20,15,27,2,6,2,14,18,6,17,10,11,0)
+
+    val sa = new SAISBuilder(d)
+    val bkt = sa.bucketEnds
+    println("d=" + d.mkString(","))
+
+    //testSA(d,javasa,verbose=false)
+    
+    sa.buildSL()
+    sa.markLMS()
+    // IN SL Should be LMSess
+
+    // 18,6,17,11,3,22,27,20,15,27,2,6,2,14,18,6,17,10,11,0
+    // L  S  L  L S  S  L  L  S  L S L S  S  L S  L  S  L S
+    //    *       *           *    *   *       *     *    *
+    // BUCKETS:
+    // 0   2 2  3  6  6 6 10 11 11 14 15 17 17 18 18 20 22 27 27
+    // 19,12,10,4,-1,15,1,17,-1,-1,-1, 8,-1,-1,-1,-1,-1,-1,-1,-1
+
+    assert(sa.SA.sameElements(Array(
+      19,12,10,4,-1,15,1,17,-1,-1,-1,8,-1,-1,-1,-1,-1,-1,-1,-1
+    )))
+    
+    sa.induceSAl()
+
+    assert(sa.SA.sameElements(Array(
+      19,12,10,4,11,15,1,17,18,3,-1,8,16,2,14,0,7,-1,9,6
+    )))
+    
+    sa.induceSAs()
+
+    assert(sa.SA.sameElements(Array(
+      19,10,12,4,11,15,1,17,18,3,13,8,16,2,14,0,7,5,9,6
+    )))
+    
+
+    // buildStep2()
+    sa.fillSAWithLMS()
+
+    assert(sa.SA.sameElements(Array(
+      19,10,12,4,15,1,17,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    )))
+
+    // println( sa.SA.mkString(","))
+
+    val (names_count,reduced_string) = sa.calcLexNames(sa.lmsCount)
+
+    assert(reduced_string.sameElements(Array(5,3,7,1,2,4,6,0)))
+  }
+  
 }
 
 
@@ -431,6 +506,32 @@ class DFATests extends FunSuite with RandomGenerator {
     val dfa = DFA.processLinkList(`ab*c`)
     val results = dfa.matchSA(sa)    
     assert(results.size == 0)
+  }
+
+  test("IntArrayWrapper.test") {
+    val d = Array(9,28,21,12,7,16,17,10,6,27,12,25,14,26,10,6,26,21,24,4,14,17,19,7,10,11,10,7,11,3,15,24,10,2,28,2,18,4,19,4,28,16,16,17,22,15,7,21,13,26,27,20,22,19,19,21,2,10,12,22,2,2,7,4,25,15,22,16,23,25,20,24,4,26,24,3,5,1,10,10,3,3,14,1,28,2,14,2,22,20,2,1,21,28,20,1,4,15,28,5,17,23,24,12,27,24,10,3,19,12,12,10,27,13,4,3,1,6,12,11,2,21,25,21,19,17,23,11,11,10,11,20,2,7,7,6,13,20,10,22,5,13,10,10,13,14,5,3,27,21,3,28,27,11,1,14,6,18,19,21,19,12,26,3,25,13,2,10,23,19,23,28,25,20,9,26,7,20,14,4,2,25,27,2,7,11,5,1,6,17,21,10,17,26,23,18,11,2,15,13,9,24,10,28,19,4,2,11,13,12,6,11,4,7,14,10,18,26,11,1,10,10,21,3,18,21,5,2,5,3,22,12,25,14,21,13,22,12,7,16,11,19,11,5,27,14,24,13,5,27,21,27,1,19,3,1,22,5,23,28,21,6,9,27,26,10,7,7,9,24,2,10,12,18,10,22,11,26,4,12,22,2,13,1,24,10,5,25,25,13,7,20,13,2,11,25,22,1,7,2,1,23,13,7,12,13,4,28,14,3,14,4,23,14,14,11,26,15,27,20,10,23,24,19,22,26,19,18,20,28,27,28,20,2,16,4,20,4,10,13,4,21,10,7,18,27,23,5,5,28,13,20,5,23,15,27,21,21,26,1,18,21,1,5,13,22,22,13,4,2,26,25,10,6,12,21,16,18,25,25,15,23,21,17,26,19,4,5,13,13,4,3,14,25,15,2,7,9,28,5,17,13,10,26,22,11,18,27,15,5,26,23,13,11,20,24,17,27,23,7,14,2,14,12,20,1,1,24,18,26,4,11,4,18,6,12,23,24,9,27,7,20,26,24,18,12,2,19,3,19,23,22,9,28,17,10,12,26,16,27,28,15,6,25,9,27,17,24,17,20,18,18,6,17,11,3,22,27,20,15,27,2,6,2,14,18,6,17,10,11,21,21,6,12,25,22,15,1,18,27,21,28,13,2,23,26,14,1,27,21,21,1,26,20,2,6,26,15,25,9,24,20,13,28,22,24,2,21,26,5,2,27,6,12,6,10,15,14,7,22,19,27,27,22,24,5,2,15,23,4,5,1,21,2,23,25,7,18,4,16,13,26,2,25,13,16,12,25,15,11,16,25,1,21,19,26,18,28,25,14,19,24,18,27,18,27,26,21,23,26,19,16,13,16,28,27,27,25,17,20,22,4,28,17,12,9,24,5,14,23,25,6,10,3,1,13,18,21,20,24,19,16,1,6,21,4,23,21,7,11,22,6,3,2,17,26,6,10,17,21,3,16,21,24,16,22,3,26,13,16,5,22,11,15,2,20,23,20,22,12,24,13,27,10,5,21,4,22,21,11,12,20,28,10,6,25,25,27,4,21,18,23,19,1,28,24,15,11,24,20,7,22,3,11,18,22,27,12,3,16,5,1,21,15,9,25,24,7,10,1,15,13,15,17,19,20,21,20,3,1,17,7,5,20,24,17,4,19,25,28,16,28,10,23,24,10,3,5,27,11,20,23,3,7,3,9,28,10,23,21,2,16,23,27,12,21,12,5,20,27,12,16,5,20,20,5,16,13,17,4,12,2,4,22,10,19,20,27,19,12,16,28,1,23,19,16,21,17,17,21,1,3,14,19,25,4,11,16,1,19,24,21,21,14,20,17,4,7,12,19,18,25,24,20,28,6,17,3,3,23,1,28,3,4,7,18,1,10,7,18,4,24,2,6,3,12,4,28,6,7,16,23,22,14,28,24,4,17,28,18,9,25,19,6,7,15,24,24,10,1,24,4,15,10,17,25,17,3,17,3,2,6,25,17,17,12,18,19,19,14,22,26,7,1,1,11,10,6,27,14,18,16,17,20,20,10,16,14,3,23,10,14,28,5,21,20,25,27,24,16,3,28,10,16,28,6,7,7,12,11,5,22,7,12,19,10,1,19,7,13,1,10,22,19,12,10,22,28,12,12,5,10,5,25,15,17,13,21,24,19,7,5,17,9,28,16,19,13,25,28,25,3,4,3,19,21,18,20,25,15,11,13,4,25,22,11,2,6,15,6,21,16,1,4,5,25,24,7,5,19,18,21,6,7,7,20,17,16,16,25,23,4,27,19,15,24,12,2,10,27,7,6,15,16,22,7,1,26,12,13,19,24,6,8,0)
+    def checkOn(d:Array[Int]) {
+      //val sa = new SAISIntBuilder(new IntArrayWrapper(d),d.max+1)
+      val sa = new SAISBuilder(d map {_.toByte})
+      sa.build()
+      testSA(sa.S.data.map{_.toInt},sa.SA,verbose=false)
+
+      import SAIS._
+      var javasa  = new Array[Int](d.size)
+      sais.suffixsort(d map {_.toByte}, javasa , d.size)
+      testSA(d,javasa,verbose=false)
+
+      for ( i <- 0 until sa.SA.length) {
+        if (javasa(i) != sa.SA(i)) {
+          assert(false,"Bad differ on %d %d != %d".format(i,javasa(i),sa.SA(i)))
+        }
+      }
+    }
+    val badArray = d.slice(471,490) :+ 0
+    //println("Bad Array = " , badArray.mkString(","))
+    checkOn(badArray)
+    checkOn(d)
+    
   }
 
 }
@@ -741,6 +842,10 @@ class BWTMerge extends FunSuite with RandomGenerator {
 }
 
 class BadTest extends FunSuite with RandomGenerator {
+  
+
+  
+  
   test("BWTMerger.build") {
     // Added Part
     val d1 = "gfvqkjxagtnmfgyhbjvmqyduwnnorggfspqegvwedansfmfbitwdkimwrpsqcdcwzwkqnzgoegqvskomwehejjzthjqthakgqahqjgteijggfznhzcnvywrsezlhuclnhrronplyfhiaagxtlqqpjoowfbcocowohmdvahvvmgfqwgpzodvzltungfzdjcfbvdpghapgdczauccofzrvwpqjgdorlssvqanidwqlcasoosnquaznjqyrqhtdbjdoknerrenjyrejsjyunbsuhzgcgcuriyechvuhznzwqdovregoacrsrqomkmahgvwgmsaencjytpictgrvimvzaqupsdywwfhzrjistdsehykvjtrurbmitenkxctnvsncsohfxobcftigsudsfanqvrspkachfwulevgjozdtrowyyznknqxusxypypvqlwzpxqsawnimwjnkwbxkndpgwubsaedumbevtyyqtglmhfjfybexsbvtzkrvgwmxfbrxassyalxubkzsypamtwjfssihofplbfbymrytciofpprovoygwfmzynxjhozgtuqcqbjpvxrgygvujfpdidxpvaarjlblguyovrikuxemypitxhkoezggbmwlcdkkedqxosumwwpnsjfhwxbdkttkeaspaxssymuerkzeeuypghsdkhdrdnbrzyzrpqxtqvuhrymxilludlclzdkjgkuabgatwibkrgkwwehvakbtjdxithpjhbvggghxygfszuetacqaysyekvlyeiqingjtkslwjtcebespcshhaixphlgdifjkibdqzhvgkmbipuxohsofaeigbywbdlrgxgrwzuquhbkwcxjqsqpflaiyzcsycelkhhkethrkfggbrihiiuoqswsbijfacdkyhjjqchvyjvuoezmdarzsabrtblbzalcchhaecvxdvrwuntmwdgbbtjhbsqqtryxksgmtonnzdqdpbzbhvmcighihgqoldvsxfhxlwjyfhongjszg"
@@ -768,34 +873,20 @@ class BadTest extends FunSuite with RandomGenerator {
 
     for (i <- 0 until test_SA_ints.length) {
       if ( test_SA_ints(i) != sa.SA(i + 1 )) {
-        printf("Problemma %d. %d != %d\n",i, test_SA_ints(i),sa.SA(i + 1 ))
+        assert(false,"Problemma %d. %d != %d".format(i, test_SA_ints(i),sa.SA(i + 1 )))
       }
     }
     
-    for ( i <- 0 until sa.SA.length - 1) {
-      val a = sa.S.slice(sa.SA(i),sa.S.length)
-      val b = sa.S.slice(sa.SA(i+1),sa.S.length)
-      val l = a.length min b.length
-      var j = 0
-      while ( j < l) {
-        if ( a(j) > b(j)) {
-          printf("BAD a(%d)  > b(%d) on j = %d %d %d",i,i+1,j,a(j),b(j))
-          j=l+1
-        }
-        j+=1
-      }
-      
-    }
-    println(sa.S.slice(285,285+10).mkString(","))
-    println(sa.S.slice(941,941+10).mkString(","))
-    printf("SAAAAAAAA - %d,%d\n",sa.SA(301),sa.SA(302));
+    
+
+    
+    //printf("SAAAAAAAA - %d,%d\n",sa.SA(301),sa.SA(302));
 
     /*
     val ranks = sa.convertSA2Rank(sa.SA) map { _ - 1 }
     val j = ranks.indexOf(300)
     println(j,ranks(j-1),ranks(j),ranks(j+1))
     */
-    println(sa.SA.mkString(","))
     val bwt = (bwt1.sa2bwt2(sa.SA).map {_.toChar}).mkString("")
     //assert ( (bwt  == 
     //
@@ -804,8 +895,9 @@ class BadTest extends FunSuite with RandomGenerator {
     for (i <- 0 until ts.length) {
       if ( ts(i) != bwt(i)) {
         printf("%d. %c != %c\n",i,ts(i),bwt(i))
+        
       }
     }
   }
-
+  
 }

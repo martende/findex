@@ -488,6 +488,15 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
     println(SL2String(sl))
   }
 
+  def buildSL() {
+    t(n-2) = false  // 'L'
+    t(n-1) = true   // 'S'
+    for ( i <- n-3 to 0 by -1) {
+      t(i) = S(i) < S(i+1) || (S(i) == S(i+1) && t(i+1) )
+    }
+  }
+  
+
   def SL2String(sl:Array[Boolean] = t) = sl.map( x => if (x) "S" else "L" ).mkString("")
 
   def isLMS(i:Int) = i>0 && t(i) && !t(i-1)
@@ -506,8 +515,18 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
     lmsCount = j
   }
 
-  def buildSL()
-  def induceSAl()
+  def induceSAl()  {
+    val bkt = bucketStarts.clone()
+    for (i <- 0 until n) {
+      val j = SA(i)-1
+      if ( j>=0 && ! t(j) ) { // L put it on start bucket
+        val l = S(j)
+        val k:Int = bkt(l)
+        bkt(l)=k+1
+        SA(k) = j
+      }
+    }
+  }
   def induceSAs()
 
 
@@ -562,7 +581,55 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
   }
   
 
-  def calcLexNames(n1:Int):Pair[Int,Array[Int]]
+  // find the lexicographic names of all substrings
+  // n1 - start
+
+  def calcLexNames(n1:Int):Pair[Int,Array[Int]] = {
+    var prev = -1
+    var name = 0
+    for (i <- 0 until n1) {
+      var pos = SA(i)
+      var diff = false
+      var d = 0
+
+      def reachedLMS(d:Int) = d > 0 && (isLMS(pos+d) || isLMS(prev+d))
+      def cmpSuff(len:Int) = S(pos+len)!=S(prev+len) || t(pos+len)!=t(prev+len)
+
+      if (  prev != -1  ) {
+        while (! diff && d < n && ! reachedLMS(d) ) {
+          if (cmpSuff(d) ) diff=true else d+=1
+        }
+        if ( d < n ) diff = diff || cmpSuff(d)
+      }
+      else
+        diff = true
+
+      if ( diff/* || cmpSuff(pos,prev,d)*/) {
+        name+=1
+        prev = pos
+      }
+      pos= if (pos % 2==0) pos/2 else (pos-1)/2
+      SA(n1+pos)=name-1
+    }
+
+
+    /* In SA from n1 to end are packed LMS indexes mit links to their names in string represented order
+     pack it all to end of SA - just avoid sorting on O(n) from O(LMS_N*lg(LMS_N)) - its not obvios best solution
+     in practice lms_count is really smaller as SA .
+     */
+
+    val sa1 = new Array[Int](n1)
+
+    var j = n1-1
+    for (i<-n-1 to n1 by -1 ) {
+      if (SA(i)>=0) {
+        sa1(j)=SA(i)
+        j = j - 1
+      }
+    }
+
+    (name,sa1)
+  }
 
   def buildStep1() {
     buildSL()
