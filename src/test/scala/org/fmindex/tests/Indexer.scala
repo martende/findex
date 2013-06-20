@@ -841,11 +841,17 @@ class BWTMerge extends FunSuite with RandomGenerator {
   }
 }
 
+class KMP extends FunSuite with RandomGenerator {
+  test("kmp creation") 
+  {
+    KMPBuffer.init(randomAlphanumericString(1025).getBytes)
+  }
+}
 class BadTest extends FunSuite with RandomGenerator {
   
 
   
-  
+  /*  
   test("BWTMerger.build") {
     // Added Part
     val d1 = "gfvqkjxagtnmfgyhbjvmqyduwnnorggfspqegvwedansfmfbitwdkimwrpsqcdcwzwkqnzgoegqvskomwehejjzthjqthakgqahqjgteijggfznhzcnvywrsezlhuclnhrronplyfhiaagxtlqqpjoowfbcocowohmdvahvvmgfqwgpzodvzltungfzdjcfbvdpghapgdczauccofzrvwpqjgdorlssvqanidwqlcasoosnquaznjqyrqhtdbjdoknerrenjyrejsjyunbsuhzgcgcuriyechvuhznzwqdovregoacrsrqomkmahgvwgmsaencjytpictgrvimvzaqupsdywwfhzrjistdsehykvjtrurbmitenkxctnvsncsohfxobcftigsudsfanqvrspkachfwulevgjozdtrowyyznknqxusxypypvqlwzpxqsawnimwjnkwbxkndpgwubsaedumbevtyyqtglmhfjfybexsbvtzkrvgwmxfbrxassyalxubkzsypamtwjfssihofplbfbymrytciofpprovoygwfmzynxjhozgtuqcqbjpvxrgygvujfpdidxpvaarjlblguyovrikuxemypitxhkoezggbmwlcdkkedqxosumwwpnsjfhwxbdkttkeaspaxssymuerkzeeuypghsdkhdrdnbrzyzrpqxtqvuhrymxilludlclzdkjgkuabgatwibkrgkwwehvakbtjdxithpjhbvggghxygfszuetacqaysyekvlyeiqingjtkslwjtcebespcshhaixphlgdifjkibdqzhvgkmbipuxohsofaeigbywbdlrgxgrwzuquhbkwcxjqsqpflaiyzcsycelkhhkethrkfggbrihiiuoqswsbijfacdkyhjjqchvyjvuoezmdarzsabrtblbzalcchhaecvxdvrwuntmwdgbbtjhbsqqtryxksgmtonnzdqdpbzbhvmcighihgqoldvsxfhxlwjyfhongjszg"
@@ -972,7 +978,8 @@ class BadTest extends FunSuite with RandomGenerator {
     }
     
   }
-  /*
+  */
+  
   test("BWTMerger.build.OF") {
     // Added Part
     val d1 = "dmbrrlwquggscrxmlqhbthpvqpccggedmiiuhwkugzvvcoaidwukjndzrggenybtxnhzewxfrpmfqbvidcuqppyimdjopzkqeepqkoysvktfvcjhfgmagfceoxwxwrfcpsomedsprbdkdzfyaidpeqejiirehsftrvftpnosrbbdwqsiibrzkbghqkkdtzqqgylomrmvcaevemhryuunlfeicakcocuhhneftmbdrnrtlhlaqucsgoutcaxhgbdpdqoqwjexhwynitbnrstxvseybzymijnfcskrzsiwsoelxtmrzzgcoqkvjhhyrnpeabgqbwdktlmbouwxoxtrpuuvetdergqfwdbsmwkaiuubiwaibsgkqjzbfvdovjhkciinbvlnpwhbnlsvpmwrliounhttpyziliwqgctzppupwyvdcxhnpiyqwjblggeulgcdtzzztrkpimjindrzkvpmhjfnchfvdgvimhrskngozynqrcytsufilaykzsymnythtmpmyeoishybfgckyttgvwufondqmffpyqiaqnrlchotunbigkdnvtqymbsshxxcjwkgtxokamvdoxupmmomyjrkcxjoiaspqpnoztdnjnrsbgrnofdkmixgwclcymkrcrmaurdbtuomdjbcvetwnduroxbczpvnwubqxqusylohjtkbhpupqdqhdkjstflvayszfmyammhxomkvgbcgkhgqjhfjsirphkgmnvgceowlrotjvtfazmczbqtcgstfvlbgpxqmnsdawsvqoyiilbsmbvvjokxhnusthyqbhrhvbkbtehtvegsxxjwmlujtrowoxskinhfahiegkaezvrjqnbsigpuusflioemmgobeziizwfmstqabvweprtgdqzlvvrwhnqnuynuoavbqrytqbgfopzuvnavdlehfviofzdqyhxtnqbrxafzgfvmrjfbqfrstcajkkggtdmpawtikjukeumeikuooyhxwaphkhjnagqbaiozrpzyn"
@@ -1033,30 +1040,152 @@ class BadTest extends FunSuite with RandomGenerator {
       }
     }
 
-    /*
-    compute_prefix_rank - cur_rank - 1 = 809 c = e rank = 27 
-    compute_prefix_rank - cur_rank - 1 = 178 c = x rank = 4 
-    compute_prefix_rank - cur_rank - 1 = 929 c = m rank = 41 
-    compute_prefix_rank - cur_rank - 1 = 498 c = s rank = 18 
-    compute_prefix_rank - cur_rank - 1 = 740 c = k rank = 29 
-    compute_prefix_rank - cur_rank - 1 = 418 c = e rank = 13 
-    compute_prefix_rank - cur_rank - 1 = 164 c = a rank = 6 
-    compute_prefix_rank - cur_rank - 1 = 5 c = n rank = 0 
-    compute_prefix_rank - cur_rank - 1 = 504 c = y rank = 15 
-    compute_prefix_rank - cur_rank - 1 = 969 c = t rank = 44 
-    */
+    val isa = sa.convertSA2Rank(sa.SA) map { _ - 1 }
+    //println(isa.mkString(","))
 
-    var i = 0
-    var c = d2(i)
+    val test_ranks_text = 
+    """c=t cur_rank = 756
+    9. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 828+occ(755,v) = 828+40 = 868
+    8. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 663+occ(867,r) = 663+34 = 697
+    7. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 620+occ(696,q) = 620+29 = 649
+    6. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 119+occ(648,d) = 119+24 = 143
+    5. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 985+occ(142,z) = 985+4 = 989
+    4. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 232+occ(988,g) = 232+53 = 286
+    3. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 794+occ(285,u) = 794+6 = 800
+    2. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 486+occ(799,m) = 486+20 = 506
+    1. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 160+occ(505,e) = 160+15 = 175
+    0. cur_rank=cfirst+compute_prefix_rank(cur_rank-1,c) 419+occ(174,k) = 419+11 = 430
+    """
+    val tra = test_ranks_text.split("\n")
+
+    val lastSym = bwt1.S(bwt1.length-1) 
+    assert(lastSym == 'd')
+    val rkLast = isa(bwt1.length-1)
+    assert(rkLast==130,"rkLast should:%d is %d".format(130,rkLast))
+    val rkFirst = isa(0)
+    assert(rkFirst==547,"rkFirst should:%d is %d".format(547,rkFirst))
+
+    val tRank0 = tra(0).split(" ")(3).toInt
+    val tC0    = tra(0).split(" ")(0).split("=")(1)(0).toByte
+
+    var j = bwt2.length -1
+    var c = bwt2.S(j)
     var cur_rank = bwt1.bucketStarts(c)
-    printf("compute_prefix_rank0 c=%c cur_rank=%d\n",c,cur_rank)
+    println(bwt2.S(j).toChar,bwt2.S(j-1).toChar,bwt2.S(j-2).toChar,bwt2.S(j-3).toChar,bwt2.S(j-4).toChar)
+    assert(c==tC0,"c0 should:%c is:%c".format(tC0,c))
+    assert(tRank0==cur_rank,"cur_rank should:%d is:%d".format(tRank0,cur_rank))
+
+
+    val DR = """.*?compute_prefix_rank\(.*?,.\) (\d+)\+occ\((\d+),(.)\) = \d+\+(\d+) = (\d+).*""".r
     
-    i+=1
-    c = d2(i)
-    cur_rank = bwt1.bucketStarts(c) + bwt1.occ(c.toByte,cur_rank-1)
+    case class cinfo(cfirst:Int,oldrank_1:Int,c:Byte,occ:Int,rank:Int)
 
-    printf("compute_prefix_rank c=%c cur_rank=%d\n",c,cur_rank)
+    val testelems = tra.slice(1,tra.length).map  {
+      case DR(cfirst,oldrank_1,c,occ,rank) => cinfo(cfirst.toInt,oldrank_1.toInt,c(0).toByte,occ.toInt,rank.toInt)
+      case d => {
+        println(d)
+        cinfo(-1,0,'a',0,0)
+      }
+    } filter {_.cfirst>0}
+    j-=1
+    println(bwt2.GT_TN.map{ if (_) "x" else "." }.mkString(""))
+    for (i <- 0 until testelems.length) {
+      val te = testelems(i)
+      c = bwt2.S(j)
+      println(j,c.toChar,te)
+      assert(c==te.c,"%d. c should be '%c' but '%c'".format(i,te.c,c))
+      val cfirst = bwt1.bucketStarts(c)
+      assert(cfirst==te.cfirst)
+      assert(te.oldrank_1 == cur_rank - 1 , "%d. oldrank_1 should be %d but %d".format(i,te.oldrank_1,cur_rank-1))
+      val occ = bwt1.occ(c.toByte,cur_rank-1)
+      assert(occ == te.occ)
+      cur_rank = cfirst + occ
+      if (lastSym == c) {
+        if (bwt2.GT_TN(bwt2.length-j-1)) cur_rank+=1
+        /*
+        if (cur_rank == rkLast) {
 
+        } else if (cur_rank>rkLast) {
+
+        } else {
+
+        }
+        */
+      }
+      j-=1
+      assert(cur_rank == te.rank, "%d. curRank should be %d but %d".format(i,te.rank,cur_rank))
+    }
   }
-  */
+  
+}
+
+
+
+class MergerTest extends FunSuite {
+  import java.io.File
+
+  class BWTLoader(f:File,bigEndian:Boolean=true) {
+    val in = new java.io.FileInputStream(f)
+    val inb = new java.io.DataInputStream(in)
+    val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+    val eof =  if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+    val b   = new Array[Byte](size.toInt)
+    val rdn = inb.read(b)
+    assert(rdn==size)
+    inb.close
+    in.close
+    def == (that: BWTLoader): Boolean = size == that.size && eof == that.eof && b.sameElements(that.b)
+  }
+
+  class AUXLoader(f:File,bigEndian:Boolean=true) {
+    val in = new java.io.FileInputStream(f)
+    val inb = new java.io.DataInputStream(in)
+    val occ   = new Array[Long](BWTMerger2.ALPHA_SIZE)
+    
+    for (i<-0 until occ.length) {
+      occ(i) = if ( ! bigEndian ) java.lang.Long.reverseBytes(inb.readLong()) else inb.readLong()
+    }
+
+    inb.close
+    in.close
+    def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
+  }
+
+    test("FileBWTReader") {
+      val r = new FileBWTReader("testdata/test.txt")
+      var d = new Array[Byte](10)
+      val n = r.copyReverse(d)
+      assert(n == d.length,"n = %d != %d  ".format(n,d.length))
+      val ts = d.reverse.map {_.toChar}  mkString("")
+      assert(ts == "uexmskeany")
+      
+      val n2 = r.copyReverse(d)
+      assert(n2 == d.length,"n = %d != %d  ".format(n2,d.length))
+      val ts2 = d.reverse.map {_.toChar}  mkString("")
+      
+      assert(ts2 == "tsljkujjpz" , "ts2 = " + ts2)
+    }
+
+    test("FileBWTReader.small") {
+      val r = new FileBWTReader("testdata/small.txt")
+      var d = new Array[Byte](15)
+      val n = r.copyReverse(d)
+      assert(n == 10,"n = %d != %d  ".format(n,10))
+
+      val ts = d.map { _.toChar }.slice(5,15).reverse mkString("")
+      assert(ts == "missisippi" , "ts2 = " + ts)
+      assert(r.isEmpty)
+    }
+    test("BWTMerger2 small file") {
+      val r = new FileBWTReader("testdata/test1024.txt")
+      val bm = new BWTMerger2(1024)
+      val (of,af) = bm.merge(r)
+      val bl = new BWTLoader(of)
+      val tbl = new BWTLoader(new File("testdata/test1024.cmp.bwt"),false)
+      assert(bl == tbl)
+      val al = new AUXLoader(af)
+      val tal = new AUXLoader(new File("testdata/test1024.cmp.aux"),false)
+      assert(al == tal)
+    }
+
 }

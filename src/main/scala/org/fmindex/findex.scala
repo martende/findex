@@ -699,6 +699,7 @@ class IntArrayWrapper(_s:Array[Int]) extends ArrayWrapper[Int](_s) {
 }
 
 
+
 class ByteArrayWrapper(_s:Array[Byte]) extends ArrayWrapper[Byte](_s) {
   def apply(i:Int):Int   = _s(i) & 0xff
   def update(i:Int,v:Int) {
@@ -727,6 +728,26 @@ class ByteArrayNulledWrapper(_s:Array[Byte]) extends ArrayWrapper[Byte](_s) {
   }
   //override def slice(from: Int, until: Int) = ???
 }
+
+class ByteArrayNulledOffsetWrapper(_s:Array[Byte],offset:Int) extends ArrayWrapper[Byte](_s) {
+  override val length = _s.length +1 - offset
+  val lastI = _s.length - offset
+
+  def apply(i:Int):Int   = if (i == lastI ) 0 else _s(i+offset) & 0xff
+  def update(i:Int,v:Int) {
+    _s(i+offset) = v.toByte
+  }
+
+  def update(i:Int,v:Byte) {
+    _s(i+offset) = v
+  }
+  override def foreach[U](f: Byte => U) {
+    super.foreach(f)
+    f(0)
+  }
+  //override def slice(from: Int, until: Int) = ???
+}
+
 
 trait NaiveSearcher extends SuffixAlgo {
   this: SAISAlgo[Byte] =>
