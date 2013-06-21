@@ -1188,6 +1188,30 @@ class MergerTest extends FunSuite {
       assert(al == tal)
     }
 
+    test("BWTMerger2.calcSA") {
+      val bm = new BWTMerger2(1024)
+      val d1 = "barbaarbadaacarb".reverse.getBytes
+      val occ = bm.calcOcc(d1)
+      assert(occ.view.slice(95,102).sameElements(Array(0,0,7,4,1,1,0)))
+      val sa = bm.calcSA(d1)
+      assert(sa.sameElements(Array(10,4,14,7,11,2,5,15,8,12,0,3,6,9,13,1)))
+      val newRank0 = sa.indexOf(0)
+      assert(newRank0==10)
+    }
+
+    test("BWTMerger2.remapAlphabet") {
+      val bm = new BWTMerger2(1024)
+      val d1 = "barbaarbadaacarb".getBytes
+      val d2 = "abaacarbadacarba".getBytes
+      val sa = bm.calcSA(d2)
+      val gtTn = bm.calcGtTn(sa.indexOf(0),sa)
+      assert(gtTn.mkString(",")=="1,3,4,5,6,7,8,9,10,11,12,13,14")
+      val gtEof = bm.computeGtEof(d1,d2,gtTn)
+      assert(gtEof.mkString(",") == "0,1,2,3,5,6,7,8,9,11,12,13,14,15")
+      val (remapped,asize) = bm.remapAlphabet(d1,gtTn)
+      assert(remapped.sameElements(Array(3,1,6,3,1,1,6,3,1,5,1,1,4,1,6,2,0)))
+      assert(asize == 7)
+    }
     test("BWTMerger2 test2048.txt") {
       val r = new FileBWTReader("testdata/test2048.txt")
       val bm = new BWTMerger2(1024)
