@@ -1188,4 +1188,17 @@ class MergerTest extends FunSuite {
       assert(al == tal)
     }
 
+    test("BWTMerger2 test2048.txt") {
+      val r = new FileBWTReader("testdata/test2048.txt")
+      val bm = new BWTMerger2(1024)
+      val (of,af) = bm.merge(r)
+      /*
+      val bl = new BWTLoader(of)
+      val tbl = new BWTLoader(new File("testdata/test1024.cmp.bwt"),false)
+      assert(bl == tbl)
+      val al = new AUXLoader(af)
+      val tal = new AUXLoader(new File("testdata/test1024.cmp.aux"),false)
+      assert(al == tal)
+      */
+    }
 }

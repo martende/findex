@@ -23,13 +23,22 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
     var pending1:Long = 0
     var chars_seen:Long = 0
     var stored_bits:Long = 0
-
+    override def toString = 
+        "KMPBuffer***"+
+        "\nkmp_shift = " + kmp_shift.view.slice(0,10).mkString(",")+
+        "\nstring = " + string.view.slice(0,10).map{_.toChar}.mkString(".")+
+        "\ncurrent = " + current
     def initData(s:Array[Byte]) {
         assert(s.length >= size)
-
-        Array.copy(s,0,string,0,size)
+        var i = 0
+        
+        while ( i < size) {
+            string(i)=s(size-i-1)
+            i+=1
+        }
+        
         fillKmpShift(kmp_shift,string,size)
-
+        // TODO: Remove test
         assert(testKmpShift(kmp_shift,string,size))
     }
     def rewind() {

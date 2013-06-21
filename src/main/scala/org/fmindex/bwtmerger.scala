@@ -1,7 +1,8 @@
 package org.fmindex
 
 import java.io.File
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.FilenameUtils
+import scala.collection.mutable.BitSet
 
 trait IBWTReader {
   def copyReverse(t:Array[Byte]):Int
@@ -111,7 +112,8 @@ object BWTMerger2 {
   val ALPHA_SIZE = 256
 }
 class BWTMerger2(size:Int) {
-  val t:Array[Byte] = new Array[Byte](size)
+  val t1:Array[Byte] = new Array[Byte](size)
+  val t2:Array[Byte] = new Array[Byte](size)
   val sa:Array[Int] = new Array[Int](size+1)
   val isa:Array[Int] = new Array[Int](size+1)
 
@@ -162,24 +164,56 @@ class BWTMerger2(size:Int) {
 
     bwt
   }
+  def calcGtTn(newRank0:Int,sa:IndexedSeq[Int]):BitSet = {
+    val gtTn = BitSet()
+    var i = newRank0 + 1
+    val n = sa.length
+    while ( i < n ) {
+      gtTn.add(sa(i))
+      i+=1
+    }
+    gtTn
+  }
+  
+  def completeKmpFilling(kmp:KMPBuffer,t2:Array[Byte],gtTn:BitSet) {
+    var i = t2.length - 1
+    while ( i > 0 ) {
+      kmp.addChar(t2(i),gtTn(i))
+      i-=1
+    }
+  }
 
   def merge(r:IBWTReader):Pair[File,File] = {
     val size = 1024
-    var n = r.copyReverse(t)
-    
-    val sa = calcSA(t,t.length-n)
-    val occGlobal = calcOcc(t,t.length-n)
+    var i = 0 
+    var gtTn:BitSet = null
+    var kmpIn:KMPBuffer = null
+    var kmpOut:KMPBuffer = null
+
+    var n = r.copyReverse(t1)
+    var first = 0
+    var last = n
+    val sa = calcSA(t1,t1.length-n)
+    val occGlobal = calcOcc(t1,t1.length-n)
 
     val newRank0 = sa.indexOf(0)
     val bwtTs = new BWTTempStorage(r.filename,n+1,newRank0+1)
-    bwtTs.save(firstSegmentBWT(sa,t))
+    bwtTs.save(firstSegmentBWT(sa,t1))
 
     bwtTs.close
     if ( ! r.isEmpty ) {
-
+      gtTn = calcGtTn(newRank0,sa)
+      kmpIn = KMPBuffer.init(t1)
+      Array.copy(t1,0,t2,0,t1.length)
     }
-    while ( ! r.isEmpty ) {
 
+    while ( ! r.isEmpty ) {
+      n = r.copyReverse(t1)
+      first = last
+      last+=n
+      completeKmpFilling(kmpIn,t2,gtTn)
+      kmpOut = kmpIn
+      kmpIn  = if (r.isEmpty ) null else KMPBuffer.init(t1)
     }
     r.close
     val auf = writeAuxFile(r.filename,occGlobal)
