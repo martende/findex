@@ -11,8 +11,6 @@ trait SuffixAlgo {
 
   def cf(c:Byte):Int
   def occ(c:Byte,i:Int):Int
-  
-  def nextSubstr(i:Int,len:Int):String
 
   def search(in:Array[Byte]):Option[(Int,Int)] = {
     var sp = 0
@@ -36,8 +34,12 @@ trait SuffixAlgo {
     var ep1 = cf(c) + occ(c,ep-1)
     if ( sp1 < ep1 ) Some((sp1,ep1)) else None
   }
-  
 }
+
+trait SuffixWalkingAlgo extends SuffixAlgo {
+  def nextSubstr(i:Int,len:Int):String
+}
+
 trait BWTDebugging[T] {
   self:BWTBuilder[T] => 
 
@@ -749,7 +751,7 @@ class ByteArrayNulledOffsetWrapper(_s:Array[Byte],offset:Int) extends ArrayWrapp
 }
 
 
-trait NaiveSearcher extends SuffixAlgo {
+trait NaiveSearcher extends SuffixWalkingAlgo {
   this: SAISAlgo[Byte] =>
   var OCC:Array[Int] = _
   def cf(c:Byte):Int = bucketStarts(c)
@@ -792,6 +794,85 @@ trait NaiveSearcher extends SuffixAlgo {
   }
 }
 
+/*
+class OnullBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int,alphaSize:Int=256) extends SuffixAlgo {
+  val n = bwt.length
+  
+  val TWO224 = 0x01000000
+  val MASK24 = 0x00ffffff
+  val MASK8  = 0x000000ff
+
+  def buildTable = {
+    var i = 0
+    var sb = 0
+    while ( i < n) {
+      if ( i & MASK24 ) {
+        var j = 0
+        while ( j < alphaSize) {
+          sbCounts(sb)(j) = count(j)
+          j+=1
+        }
+        sb+=1
+      }
+      if ( i & MASK8 ) {
+        var j = 0
+        while ( j < alphaSize) {
+          num = count(j) - sbCounts(sb-1)(j)
+          j+=1
+          bwt32(i+j) += num
+        }
+      }
+      if ( i != rk0 ) count(bwt(i))+=1
+    }
+  }
+}
+*/
+class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends SuffixAlgo {
+  val K = bucketStarts.length
+  val n = bwt.length
+
+  val occtable:Array[Int] =  {
+    val oct = new Array[Int](n)
+    val bkt=bucketStarts.clone()
+    for ( i<- 0 until n) {
+      val c = bwt(i)
+      val j = bkt(c).toInt
+
+      oct(j)=i
+      if ( i != rk0) {
+        bkt(c)=(j+1)
+      }
+    }
+    oct
+  }
+  def cf(c:Byte):Int = bucketStarts(c).toInt
+  def occ(c:Byte,key:Int):Int = {
+    val istart = bucketStarts(c).toInt
+    var imin = istart
+    val iend = if ( c==K-1 ) n else bucketStarts(c+1).toInt-1
+    var imax = iend
+    if (imin <= imax) {
+      var found = false
+      var imid:Int = 0
+      var ival:Int = 0
+      while (! found && imax >= imin) {
+        imid = (imax+imin) / 2
+        ival = occtable(imid)
+        if (ival < key)
+          imin = imid + 1
+        else if (ival > key)
+          imax = imid - 1
+        else
+          found = true
+      }
+      //printf("c=%c,key=%d,ival=%d,imid=%d,imax=%d (imid-istart)=%d gmax=%d\n",c,key,ival,imid,imax,imid - istart,iend)
+      // actually our buckets contain one hole - for EOF - lets ignore it
+      if ( imid == iend && ival== 0 ) (iend - istart)
+      else if (ival <= key ) (imid - istart+1) else (imid - istart ) 
+    } else 0
+    
+  }
+}
 
 class SAIS0FreeBuilder(_s:Array[Byte]) extends SAISBuilder(new ByteArrayNulledWrapper(_s))  {
   

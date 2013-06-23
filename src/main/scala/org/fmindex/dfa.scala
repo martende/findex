@@ -225,7 +225,7 @@ class DFA(nstates:Int,nchars:Int) {
     }
   }
   
-  case class DFAResult(sa:SuffixAlgo,len:Int,sp:Int,ep:Int) {
+  case class DFAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
     val cnt = ep - sp
     lazy val strResult:String = if ( cnt ==1 ) 
       sa.nextSubstr(sp,len)
@@ -237,7 +237,7 @@ class DFA(nstates:Int,nchars:Int) {
   }
 
   case class StatePoint(state:Int,len:Int,sp:Int,ep:Int) {
-    def expand(sa:SuffixAlgo):List[StatePoint] = {
+    def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
       var ret = List()
       println(this + " expand")
       val newStates = for (action <- buckets(state)) yield {
@@ -258,7 +258,7 @@ class DFA(nstates:Int,nchars:Int) {
     }
   }
   
-  def matchSA(sa:SuffixAlgo) = {
+  def matchSA(sa:SuffixWalkingAlgo) = {
     var cur_state = 0
     var statesFront = Set(StatePoint(0,0,0,sa.n))
     var visited = Set[StatePoint]()
