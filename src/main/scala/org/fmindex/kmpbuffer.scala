@@ -27,7 +27,9 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
         "KMPBuffer***"+
         "\nkmp_shift = " + kmp_shift.view.slice(0,10).mkString(",")+
         "\nstring = " + string.view.slice(0,10).map{_.toChar}.mkString(".")+
-        "\ncurrent = " + current
+        "\ncurrent = " + current +
+        "\nstored_bits = " + stored_bits +
+        "\nchars_seen = " + chars_seen
     def initData(s:Array[Byte]) {
         assert(s.length >= size)
         var i = 0
@@ -54,6 +56,7 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
         current = 0
     }
     def revisitChar(c:Byte):Option[Boolean] = {
+        var dd:Boolean = false
         chars_seen-=1
         if(c == string(current) ) {
             current+=1
@@ -66,10 +69,10 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
                     pending1-=1
                     Some(true)
                 } else {
-                    var gt:Option[Boolean] = None
-                    //uint64 len=read_run(gt,&(b->cur_bit),b->stored_bits,b->bit_buffer)
-                    
-                    gt
+                    val (len,gt) = readBit()
+                    if ( gt ) pending1 = len -1 
+                    else      pending0 = len -1 
+                    Some(gt)
                 }
             } else None
         
@@ -118,17 +121,18 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             }
         }
     }
-           
+
+    //uint64 len=read_run(gt,&(b->cur_bit),b->stored_bits,b->bit_buffer)       
     def readBit()  = {
         var gt:Int = 0
         var count:Long = 1
-        assert(cur_bit < bit_buffer_size,"readBit buffer full wtf") 
+        assert(cur_bit < stored_bits,"readBit buffer full wtf") 
         def gb(i:Int):Int = (( bit_buffer(i/64) >>  (i % 64) ) & 1).toInt
         gt = gb(cur_bit)
         cur_bit+=1
         count = 1 
         while ( count < KMPBuffer.LONG_RUN_LIMIT && 
-            cur_bit < bit_buffer_size && 
+            cur_bit < stored_bits && 
             gb(cur_bit) != gt ) {
             count+=1
             cur_bit+=1
@@ -137,6 +141,7 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             var bit = 0
             var nbits = 0
             while (bit != 1) {
+                assert(cur_bit>=stored_bits)
                 bit = gb(cur_bit)
                 cur_bit+=1
                 nbits+=1
@@ -144,6 +149,7 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             nbits-=1
             var gamma:Long = 1
             while ( nbits > 0) {
+                assert(cur_bit>=stored_bits)
                 bit = gb(cur_bit)
                 cur_bit+=1
                 gamma = 2 * gamma + bit

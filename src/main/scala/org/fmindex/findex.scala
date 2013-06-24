@@ -834,22 +834,24 @@ class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends
   val occtable:Array[Int] =  {
     val oct = new Array[Int](n)
     val bkt=bucketStarts.clone()
-    for ( i<- 0 until n) {
-      val c = bwt(i)
+    var i = 0
+    while ( i < n ) {
+      val c = bwt(i) & 0xff
       val j = bkt(c).toInt
-
-      oct(j)=i
       if ( i != rk0) {
+        oct(j)=i
         bkt(c)=(j+1)
       }
+      i+=1
     }
     oct
   }
   def cf(c:Byte):Int = bucketStarts(c).toInt
   def occ(c:Byte,key:Int):Int = {
-    val istart = bucketStarts(c).toInt
+    val ci = c & 0xff
+    val istart = bucketStarts(ci).toInt
     var imin = istart
-    val iend = if ( c==K-1 ) n else bucketStarts(c+1).toInt-1
+    val iend = if ( c==K-1 ) n else bucketStarts(ci+1).toInt-1
     var imax = iend
     if (imin <= imax) {
       var found = false
