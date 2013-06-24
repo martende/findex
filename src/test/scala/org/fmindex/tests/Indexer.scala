@@ -1253,26 +1253,89 @@ class MergerTest extends FunSuite {
       
     }
  
+    test("BWTMerger test2048.txt") {
+        
+        
+        val r = new FileBWTReader("testdata/test2048.txt")
+        val bm = new BWTMerger2(1024)
+        val (of,af) = bm.merge(r)
+        
+        
+        val bl = new BWTLoader(of)
+        val tbl = new BWTLoader(new File("testdata/test2048.cmp.bwt"),false)
+        assert(bl == tbl)
+        
+        
+        val al = new AUXLoader(af)
+        val tal = new AUXLoader(new File("testdata/test2048.cmp.aux"),false)
+        assert(al == tal)
+        
+    }
+    
+    test("BWTMerger test3072.txt") {
+        val r = new FileBWTReader("testdata/test3072.txt")
+        val bm = new BWTMerger2(1024)
+        val (of,af) = bm.merge(r)
+        
+        val bl = new BWTLoader(of)
+        val tbl = new BWTLoader(new File("testdata/test3072.cmp.bwt"),false)
+        assert(bl == tbl)
+        
+        val al = new AUXLoader(af)
+        val tal = new AUXLoader(new File("testdata/test3072.cmp.aux"),false)
+        assert(al == tal)
+    }
 
+    test("BWTMerger test.txt") {
+      val r = new FileBWTReader("testdata/test.txt")
+      val bm = new BWTMerger2(1024)
+      val (of,af) = bm.merge(r)
+      
+      val bl = new BWTLoader(of)
+      val tbl = new BWTLoader(new File("testdata/test.cmp.bwt"),false)
+      assert(bl == tbl)
+      
+      val al = new AUXLoader(af)
+      val tal = new AUXLoader(new File("testdata/test.cmp.aux"),false)
+      assert(al == tal)      
+    }
 }
 
 
 class MergerTest2 extends FunSuite {
   import java.io.File
-      test("BWTMerger2 test2048.txt") {
-      
-      
-      val r = new FileBWTReader("testdata/test2048.txt")
-      val bm = new BWTMerger2(1024)
-      val (of,af) = bm.merge(r)
-      
-      /*
-      val bl = new BWTLoader(of)
-      val tbl = new BWTLoader(new File("testdata/test1024.cmp.bwt"),false)
-      assert(bl == tbl)
-      val al = new AUXLoader(af)
-      val tal = new AUXLoader(new File("testdata/test1024.cmp.aux"),false)
-      assert(al == tal)
-      */
+   class BWTLoader(f:File,bigEndian:Boolean=true) {
+    val in = new java.io.FileInputStream(f)
+    val inb = new java.io.DataInputStream(in)
+    val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+    val eof =  if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+    val b   = new Array[Byte](size.toInt)
+    val rdn = inb.read(b)
+    //assert(rdn==size)
+    inb.close
+    in.close
+    def == (that: BWTLoader): Boolean = size == that.size && eof == that.eof && b.sameElements(that.b)
+  }
+  class AUXLoader(f:File,bigEndian:Boolean=true) {
+    val in = new java.io.FileInputStream(f)
+    val inb = new java.io.DataInputStream(in)
+    val occ   = new Array[Long](BWTMerger2.ALPHA_SIZE)
+    
+    for (i<-0 until occ.length) {
+      occ(i) = if ( ! bigEndian ) java.lang.Long.reverseBytes(inb.readLong()) else inb.readLong()
     }
+
+    inb.close
+    in.close
+    def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
+  }
+  
+  test("BWTMerger test.txt") {
+    val r = new DirBWTReader("testdata/t1")
+    val bm = new BWTMerger2(1024)
+    val (of,af) = bm.merge(r)
+    
+  }
+
+
 }

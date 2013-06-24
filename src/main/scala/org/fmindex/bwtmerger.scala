@@ -14,6 +14,41 @@ trait IBWTReader {
   val filename:String = "IBWTReader"
 }
 
+class DirBWTReader(_dir:String) extends IBWTReader {
+  def reset:IBWTReader = new DirBWTReader(_dir)
+  val files = recursiveListFiles(new File(_dir))
+  var filesStream = files
+  var in:java.io.FileInputStream = _
+  //var inb = new java.io.BufferedInputStream(in)
+  var lastByte:Int = inb.read()
+  def isEmpty = ( lastByte == -1 )
+
+  def recursiveListFiles(f: File): Stream[File] = {
+      if (! f.isDirectory ) {
+          Stream(f)
+      } else {
+          val these = f.listFiles
+          if ( these == null )
+              Stream.empty
+          else
+              these.filter(! _.isDirectory).toStream append these.filter(_.isDirectory).flatMap(recursiveListFiles)
+      }
+  }
+
+  def _readByte(filesStream,inb) = {
+    if ( inb == null ) {
+      if ( filesStream.isEmpty ) -1 else _readByte(new java.io.BufferedInputStream(filesStream.head),filesStream.tail)
+    } else {
+      val b = inb.read()
+      if ( b == -1 ) {
+        _readByte(null,filesStream)
+      } else {
+        b
+      }
+    }
+  }
+}
+
 class FileBWTReader(_filename:String) extends IBWTReader {
   override val filename = _filename
   val f = new File(filename)
@@ -148,7 +183,7 @@ class BWTTempStorage(_basename:String,_size:Int,_eof:Int) {
     if (!closed) close  
 
     val to = new File(BWTTempStorage.genFilename(basename))
-    println("convertToPermanent ",f,to)
+    
     if (! f.renameTo(to)) {
       throw new Exception("cant rename")
     }
@@ -163,6 +198,14 @@ class BWTTempStorage(_basename:String,_size:Int,_eof:Int) {
       outd.write(b)
       i+=1
     }
+    c match {
+      case Some(oc) => outd.write(oc)
+      case None => 
+    }
+  }
+  def remove() {
+    if ( ! closed ) close
+    f.delete()
   }
 }
 
@@ -381,6 +424,36 @@ class BWTMerger2(size:Int) {
     }
     gtTn
   }
+  def recalcGtTn(_bucketStarts:Array[Long],bwt:Array[Byte],rankFirst:Int,rankLast:Int) = {
+    val gtTn:BitSet = new BitSet()
+    val n = bwt.length
+    
+    val bucketStarts = _bucketStarts.clone()
+    val rankprev = new Array[Int](n)
+    var i = 0
+    while (i < n) {
+      if ( i != rankFirst) {
+        val j = bwt(i)
+        rankprev(i) = bucketStarts(j).toInt
+        bucketStarts(j)+=1
+        if (rankprev(i) == rankLast ) {
+          rankprev(i) = bucketStarts(j).toInt
+          bucketStarts(j)+=1
+        }
+      } else {
+        rankprev(i) = n
+      }
+      i+=1
+    }
+    i = rankLast
+    var j = n -1 
+    while ( j > 0 ) {
+      gtTn(j)=(i > rankFirst)
+      i = rankprev(i)
+      j-=1
+    }
+    gtTn
+  }
   
   def completeKmpFilling(kmp:KMPBuffer,t2:Array[Byte],gtTn:BitSet) {
     var i = t2.length - 1
@@ -475,17 +548,21 @@ class BWTMerger2(size:Int) {
     val bwtIn = oldStorage.inStorage
     var tot = 0
     i = 0
-    while ( tot <=n ) {
+    while ( i <=n ) {
       val gi = gaps(i)
       
       val nextBwtChar = if (i < n) {
         if (i == curRank0) assert(tot + i + gi == newOef)
         Some(bwt(i))
       } else None
+      
+      //printf("i=%d gi=%d next_bwt_char=0x%02x tot=%d old_eof=%d\n",i,gi,nextBwtChar.getOrElse(0),tot,oldEof);
 
       if ( tot > oldEof || (tot + gi <= oldEof )) {
+        //printf("block_transfer.A\n");
         bwtTs.blockTransfer(bwtIn,gi,nextBwtChar)
       } else {
+        //printf("block_transfer.B\n");
         bwtTs.blockTransfer(bwtIn,oldEof-tot,Some(lastChar))
         lastChar = bwtIn.read().toByte
         bwtTs.blockTransfer(bwtIn,gi-(oldEof-tot)-1,nextBwtChar)
@@ -494,10 +571,12 @@ class BWTMerger2(size:Int) {
       tot += gi
       i+=1
     }
+    //println("mergeTemp tot=",tot)
     bwtIn.close
     bwtTs.close
     bwtTs
   }
+  
   def merge(r:IBWTReader):Pair[File,File] = {
     val size = 1024
     var i = 0 
@@ -525,6 +604,7 @@ class BWTMerger2(size:Int) {
     while ( ! r.isEmpty ) {
       n = r.copyReverse(t1)
       val t1v = t1.view.slice(size-n,t1.length)
+
       first = last
       last+=n
       val lastSymbol = t1(t1.length-1)
@@ -543,9 +623,21 @@ class BWTMerger2(size:Int) {
       assert(bwt.length==n)
       val gaps = calcGaps(r.reset,searcher,kmpIn,kmpOut,bwt,lastSymbol,first,bs,rankFirst,rankLast)
       
-      assert({var i = 0; var j=0;while(j<=n){i+=gaps(j);j+=1};j==first+1},"GAPS checking OK")
+      //println(gaps.mkString(","))
+      
 
-      bwtTs = mergeTemp(bwtTs,gaps,bwt,rankFirst,lastSymbol)
+      assert(gaps.sum==first+1,"GAPS checking OK")
+
+      val newBwtTs = mergeTemp(bwtTs,gaps,bwt,rankFirst,lastSymbol)
+      
+      if ( ! r.isEmpty ) {
+        gtTn = recalcGtTn(bs,bwt,rankFirst,rankLast)
+        Array.copy(t1,0,t2,0,t1.length)
+      }
+        
+      
+      bwtTs.remove()
+      bwtTs = newBwtTs
     }
     r.close
     val auf = writeAuxFile(r.filename,occGlobal)
