@@ -18,7 +18,7 @@ object Util {
       val n = in.read(b)
       if ( n < 0 ) {
         None
-      } else if ( b.slice(0,n).exists(_==0) )
+      } else if ( b.view.slice(0,n).exists(_==0) )
         Some(true)
       else 
         Some(false)
