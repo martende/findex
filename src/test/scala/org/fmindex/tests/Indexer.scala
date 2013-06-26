@@ -1412,7 +1412,7 @@ class MergerTest2 extends FunSuite {
       }
       kmpIn.writeBit(v)
     }
-    writeBit(true,3)
+    writeBit(true,7)
     //[info] 00000007,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
     //[info] !3 bit(s) stored in bit buffer!
     writeBit(true,3)
