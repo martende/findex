@@ -14,26 +14,45 @@ trait IBWTReader {
   val filename:String = "IBWTReader"
 }
 
-class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0) extends IBWTReader {
-  def reset:IBWTReader = new DirBWTReader(_dir,_filename)
+class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,caching:Boolean=false) extends IBWTReader {
+  def reset:IBWTReader = if ( caching ) {
+    cacheoutb.flush()
+    new FileBWTReader(cachefile)
+  }
+    else new DirBWTReader(_dir,_filename)
   override val filename:String = _filename
   val files = recursiveListFiles(new File(_dir))
   var filesStream = files
-  var inb:java.io.FileInputStream = _
-  //var inb = new java.io.BufferedInputStream(in)
+  //var in:java.io.FileInputStream = _
+  var inb:java.io.BufferedInputStream = _ // new java.io.BufferedInputStream(in)
+
+  val cachefile = BWTTempStorage.genCacheFilename(_filename)
+  var cacheoutb:java.io.BufferedOutputStream = if (caching) {
+      val cacheout = new java.io.FileOutputStream(cachefile)
+      new java.io.BufferedOutputStream(cacheout)
+  } else null
+  
   var lastByte:Int = _readByte(filesStream,null)
   def isEmpty = ( lastByte == -1 )
   def debug(l:Int,s: =>String  ) = if (l<=debugLevel) println(s)
   def recursiveListFiles(f: File): Stream[File] = {
-      if (! f.isDirectory ) {
-          Stream(f)
-      } else {
-          val these = f.listFiles
-          if ( these == null )
-              Stream.empty
-          else
-              these.filter(! _.isDirectory).toStream append these.filter(_.isDirectory).flatMap(recursiveListFiles)
-      }
+    def isBinary(f:File) = Util.isBinary(f) match  {
+      case Some(true) => 
+        debug(2,"DirBWTReader: read file '%s' File Is Binary".format(f))
+        true
+      case Some(false) => false
+      case None => true
+    }
+
+    if (! f.isDirectory ) {
+        Stream(f)
+    } else {
+        val these = f.listFiles
+        if ( these == null )
+            Stream.empty
+        else
+            these.filter(! _.isDirectory).toStream append these.filter{x:File => x.isDirectory || ! isBinary(x) }.flatMap(recursiveListFiles)
+    }
   }
   def getByte = {
     val b = lastByte.toByte
@@ -60,19 +79,24 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0)
     t.length - i - 1 
   }
 
-  def _readByte(fStream:Stream[File],_inb:java.io.FileInputStream):Int = {
+  def _readByte(fStream:Stream[File],_inb:java.io.BufferedInputStream):Int = {
     if ( _inb == null ) {
       if ( fStream.isEmpty ) {
-        inb = _inb
+        if ( inb != null ) inb.close()
+        inb = null
         filesStream = fStream
         -1 
       }
       else {
-        debug(1,"DirBWTReader: read file '%s'".format(fStream.head))
+        debug(3,"DirBWTReader: read file '%s'".format(fStream.head))
         val opNewIs = try {
-          Some(new java.io.FileInputStream(fStream.head))
+          val in = new java.io.FileInputStream(fStream.head)
+          Some(new java.io.BufferedInputStream(in))
         } catch {
-          case _:java.io.FileNotFoundException  => None
+          case _:java.io.FileNotFoundException  => {
+            debug(2,"DirBWTReader: read file '%s' File Not Found".format(fStream.head))
+            None
+          }
         } 
         opNewIs match {
           case Some(newIs) => _readByte(fStream.tail,newIs)
@@ -85,8 +109,12 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0)
       if ( b == -1 ) {
         _readByte(fStream,null)
       } else {
-        inb = _inb
-        filesStream = fStream
+        if (inb != _inb ) {
+          if ( inb != null) inb.close()
+          inb = _inb
+          filesStream = fStream
+        }
+        if (caching) cacheoutb.write(b)
         b
       }
     }
@@ -96,6 +124,10 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0)
     if ( inb != null) {
       inb.close
       inb=null
+    }
+    if ( cacheoutb != null ) {
+      cacheoutb.close
+      cacheoutb = null
     }
     filesStream = Stream.Empty
   }
@@ -176,6 +208,10 @@ object BWTTempStorage {
   def genAuxFilename(s:String) = {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".aux" 
+  }
+  def genCacheFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".cache" 
   }
   var count = 0
 }
@@ -273,8 +309,11 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
   def debug(l:Int,s: =>String  ) = if (l<=debugLevel) println(s)
 
   def calcSA(t:Array[Byte],offset:Int=0) = {
+    val tm = System.nanoTime()
     val sa = new SAISBuilder(new ByteArrayNulledOffsetWrapper(t,offset))
     sa.build()
+    saisLastTime = System.nanoTime() - tm
+    saisTotalTime += saisLastTime
     sa.SA.view.slice(1,sa.SA.length)
   }
 
@@ -397,19 +436,22 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       i+=1
     }
     
-    // Why its not just smthng else 
+    assert(rank0>=0,"rank0 not found")
+
     // take care of the position where the eof symbol should go
     // writing a nearby symbol to help (run-length) compression 
 
-    assert(rank0>0)
-    bwt(rank0) = bwt(rank0-1)
+    if (rank0 >0)
+      bwt(rank0) =  bwt(rank0-1)
+    else 
+      bwt(rank0) =  bwt(rank0+1)
 
     bwt
   }
 
 
 
-  def calcOcc(t:Array[Byte],offset:Int=0) = {
+  def calcOcc(t:IndexedSeq[Byte]) = {
     val l = t.length
     var i = 0 
     val occ = new Array[Long](BWTMerger2.ALPHA_SIZE)
@@ -512,6 +554,18 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
   }
   
   def completeKmpFilling(kmp:KMPBuffer,t2:Array[Byte],gtTn:BitSet) {
+    def DEBUGdumpi = {
+      val out = new java.io.FileOutputStream(new java.io.File("/tmp/smerge.txt"))
+      val outb =  new java.io.BufferedOutputStream(out)
+
+      var i = t2.length - 1
+      while ( i > 0 ) {
+        outb.write("%d\n".format(if (gtTn(i)) 1 else 0 ).getBytes)
+        i-=1
+      }
+      outb.close
+    }
+    
     var i = t2.length - 1
     while ( i > 0 ) {
       kmp.addChar(t2(i),gtTn(i))
@@ -521,15 +575,20 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
   
   def calcSAStatistic(t:IndexedSeq[Byte],bucketStarts:Array[Long],gtEof:BitSet) = {
     val (remapped,asize) = remapAlphabet(t,gtEof)
+    val tm = System.nanoTime()
     val sab = new SAISIntBuilder(new IntArrayWrapper(remapped),asize)
     sab.build()
-
+    saisLastTime = System.nanoTime() - tm
+    saisTotalTime += saisLastTime
+    
     val sa = sab.SA.view.slice(1,sab.SA.length)
-
+    
     val bwt = sa2BWT(sa,t)
     val rankFirst = sa.indexOf(0)
     val rankLast  = sa.indexOf(sa.length-1)
     val searcher = new NaiveBWTSearcher(bwt,bucketStarts,rankFirst)
+
+    assert(bwt.length==t.length,"bwt.len(%d) != n(%d)".format(bwt.length,t.length))
 
     (bwt,searcher,rankFirst,rankLast)
   }
@@ -556,13 +615,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     val pfxBuffer = new Array[Byte](KMPBuffer.PFX_BUFFER_SIZE)
     var c = r.getByte 
     var curRank = bucketStarts(c).toInt
-    if ( step == 133 ) {
-      printf("suf_insert_bwt n=%d rklst=%d rk0=%d\n",n,rklst,rk0);
-      for ( i <- 0 until n ) {
-        printf("%d,", bwt(i));
-      }
-      printf("\n");   
-    }
+
     pfxBuffer(0) = c
     gaps(0)+=1
     gaps(curRank)+=1
@@ -597,6 +650,10 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       i+=1
     }
     r.close
+
+    assert(kmpOut.chars_seen==0,"kmpOut.chars_seen = %d".format(kmpOut.chars_seen))
+    assert(gaps.sum==numOldSuf+1,"GAPS checking OK")
+
     gaps
   }
   def mergeTemp(oldStorage:BWTTempStorage,gaps:Array[Int],bwt:Array[Byte],curRank0:Int,_lastChar:Byte):BWTTempStorage = {
@@ -642,19 +699,58 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     bwtTs.close
     bwtTs
   }
+  def time[R](block: => R,evaled:Long => Unit): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    //println("Elapsed time: " + (t1 - t0) + "ns")
+    evaled(t1-t0)
+    result
+  }
+
   var step = 0
+  var mergeStartTime:Long = _
+  var mergeTotalTime:Long = _
+  var mergeLastStepTime:Long = _
+  var firstBlockTime:Long = _
+  var saisLastTime:Long = _
+  var saisTotalTime:Long = _
+  var datainpLastTime:Long = _ 
+  var datainpTotalTime:Long = _ 
+  var calcGapsLastTime:Long = _ 
+  var calcGapsTotalTime:Long = _ 
+
   def merge(r:IBWTReader):Pair[File,File] = {
-    val size = 1024
     var i = 0 
     var gtTn:BitSet = null
     var kmpIn:KMPBuffer = null
     var kmpOut:KMPBuffer = null
 
-    var n = r.copyReverse(t1)
+    def speedF(x:Double):String = if (x > 1024 * 1024 / 2 ) 
+          "%.1f M/sec".format(x/(1024*1024) )
+        else if (x > 1024 / 2 )
+          "%.1f k/sec".format(x/(1024) )
+        else 
+          "" + x.toInt + " b/sec"
+    def bytesF(x:Int):String = if (x > 1024 * 1024 / 2 ) 
+          "%.1f Mb".format(x.toFloat/(1024*1024) )
+        else if (x > 1024 / 2 )
+          "%.1f kb".format(x.toFloat/(1024) )
+        else 
+          "" + x.toInt + " bytes"
+    debug(1,"BWTMerger2.merge: Start BufSize=%d".format(t1.length))
+    mergeStartTime = System.nanoTime()
+    
+    var n = time({ 
+      r.copyReverse(t1) 
+    },{
+      x:Long => datainpLastTime=x;datainpTotalTime+=x
+    })
+
     var first:Long = 0
     var last:Long = n
     val sa = calcSA(t1,t1.length-n)
-    val occGlobal = calcOcc(t1,t1.length-n)
+    val occGlobal = calcOcc(t1)
     val newRank0 = sa.indexOf(0)
     var bwtTs = new BWTTempStorage(r.filename,n+1,newRank0+1)
     bwtTs.save(firstSegmentBWT(sa,t1))
@@ -665,20 +761,55 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       kmpIn = KMPBuffer.init(t1)
       Array.copy(t1,0,t2,0,t1.length)
     }
+    firstBlockTime = System.nanoTime() - mergeStartTime
 
     while ( ! r.isEmpty ) {
+      var mergeStepStartTime = System.nanoTime()
+
       step+=1
-      debug(2,"BWTMerger2.merge: start step %d".format(step))
-      n = r.copyReverse(t1)
-      if ( step == 132 ||  step == 133 ) {
-        println(t1.reverse.mkString(","))
-      }
-      val t1v = t1.view.slice(size-n,t1.length)
+
+      debug(2,{
+        val sp1 = ( if (step == 1 ) last else (last-first) )/( (if (step == 1 ) firstBlockTime else mergeLastStepTime)/1e9)
+        val del = " "
+        ( "BWTMerger2.merge: start step %d"+ del + 
+            "lastStep=%d sec"+ del + 
+            "readed: %s"+ del + 
+            "speed=%s"+ del + 
+            "Avgspeed=%s"+ del + 
+            "saisLastIteration = %d"+ del + 
+            "diskread = %d"+ del + 
+            "diskreadTotal = %d"+ del + 
+            "calcGaps = %d"+ del + 
+            "calcGapsTotal =%d" 
+          ).format(
+          step,
+          ((if (step == 1 ) firstBlockTime else mergeLastStepTime)/1e9).toInt,
+          bytesF(last.toInt),
+          speedF( sp1 ),
+          if (step == 1 ) speedF( sp1 ) else speedF( 
+              last /( (mergeStepStartTime - mergeStartTime ) /1e9 ) 
+          ),
+          (saisLastTime/1e9).toInt,
+          (datainpLastTime/1e9).toInt,
+          (datainpTotalTime/1e9).toInt,
+          (calcGapsLastTime/1e9).toInt,
+          (calcGapsTotalTime/1e9).toInt
+        )
+      })
+
+      n = time({ 
+        r.copyReverse(t1) 
+      },{
+        x:Long => datainpLastTime=x;datainpTotalTime+=x
+      })
 
       first = last
       last+=n
+
+      val t1v = t1.view.slice(size-n,t1.length)
+      
       val lastSymbol = t1(t1.length-1)
-      val occ  = calcOcc(t1,t1.length-n)
+      val occ  = calcOcc(t1v)
       val bs = calcBs (occ)
       updateOcc(occGlobal,occ)
 
@@ -692,13 +823,11 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       val gtEof = computeGtEof(t1v,t2,gtTn)
       val (bwt,searcher,rankFirst,rankLast) = calcSAStatistic(t1v,bs,gtEof)
       
-      assert(bwt.length==n)
-      val gaps = calcGaps(r.reset,searcher,kmpIn,kmpOut,bwt,lastSymbol,first,bs,rankFirst,rankLast)
-      assert(kmpOut.chars_seen==0,"kmpOut.chars_seen = %d".format(kmpOut.chars_seen))
-      //println(gaps.mkString(","))
-      
-
-      assert(gaps.sum==first+1,"GAPS checking OK")
+      val gaps = time({
+        calcGaps(r.reset,searcher,kmpIn,kmpOut,bwt,lastSymbol,first,bs,rankFirst,rankLast)
+      },{
+        t:Long => calcGapsLastTime = t ; calcGapsTotalTime+=t
+      } )
 
       val newBwtTs = mergeTemp(bwtTs,gaps,bwt,rankFirst,lastSymbol)
       
@@ -706,14 +835,46 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
         gtTn = recalcGtTn(bs,bwt,rankFirst,rankLast)
         Array.copy(t1,0,t2,0,t1.length)
       }
-        
-      
+
       bwtTs.remove()
       bwtTs = newBwtTs
+
+      mergeLastStepTime = System.nanoTime() - mergeStepStartTime
     }
     r.close
     val auf = writeAuxFile(r.filename,occGlobal)
     val bwtf = bwtTs.convertToPermanent
+    
+    mergeTotalTime = System.nanoTime() - mergeStartTime
+
+    debug(2,{
+        val sp1 = ( if (step == 1 ) last else (last-first) )/( (if (step == 1 ) firstBlockTime else mergeLastStepTime)/1e9)
+        val del = " "
+        ( "BWTMerger2.merge: Finish "+ del + 
+            "lastStep=%d sec"+ del + 
+            "readed: %d bytes"+ del + 
+            "speed=%s"+ del + 
+            "Avgspeed=%s"+ del + 
+            "saisLastIteration = %d"+ del + 
+            "diskread = %d"+ del + 
+            "diskreadTotal = %d"+ del + 
+            "calcGaps = %d"+ del + 
+            "calcGapsTotal =%d" 
+          ).format(
+          step,
+          last,
+          speedF( sp1 ),
+          if (step == 1 ) speedF( sp1 ) else speedF( 
+              last /(  mergeTotalTime  /1e9 ) 
+          ),
+          (saisLastTime/1e9).toInt,
+          (datainpLastTime/1e9).toInt,
+          (datainpTotalTime/1e9).toInt,
+          (calcGapsLastTime/1e9).toInt,
+          (calcGapsTotalTime/1e9).toInt
+        )
+      })
+
     (bwtf,auf)
   }
 }

@@ -524,6 +524,9 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
   def markLMS() {
     val bkt = bucketEnds.clone()
     var j = 0
+
+    assert(C.sum == S.length,"C.sum != S.length - ja ja shit happens %d != %d".format(C.sum,S.length))
+
     for ( i <- 1 until n) {
       if (isLMS(i)) {
         val t = bkt(S(i))-1
@@ -744,7 +747,13 @@ class ByteArrayNulledOffsetWrapper(_s:Array[Byte],offset:Int) extends ArrayWrapp
     _s(i+offset) = v
   }
   override def foreach[U](f: Byte => U) {
-    super.foreach(f)
+    //super.foreach(f)
+    var i = offset
+    val n = _s.length
+    while ( i < n) {
+      f(_s(i))
+      i+=1
+    }
     f(0)
   }
   //override def slice(from: Int, until: Int) = ???
@@ -851,7 +860,7 @@ class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends
     val ci = c & 0xff
     val istart = bucketStarts(ci).toInt
     var imin = istart
-    val iend = if ( c==K-1 ) n else bucketStarts(ci+1).toInt-1
+    val iend = if ( ci==K-1 ) n-1 else bucketStarts(ci+1).toInt-1
     var imax = iend
     if (imin <= imax) {
       var found = false

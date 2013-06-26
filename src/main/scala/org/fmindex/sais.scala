@@ -150,7 +150,11 @@ class SAISBuilder(_s:ArrayWrapper[Byte]) extends SAISAlgo[Byte] with NaiveSearch
 
   lazy val C:Array[Int] = {
     val cnt = new Array[Int](K)
+
     S foreach { idx:cType => cnt(idx & 0xff)+=1 }
+
+    assert(cnt.sum == S.length,"C.sum != S.length - ja ja shit happens %d != %d".format(cnt.sum,S.length))
+
     cnt
   }
 
