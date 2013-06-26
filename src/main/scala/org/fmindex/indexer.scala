@@ -3,7 +3,7 @@ package org.fmindex
 
 object IndexerApp extends optional.Application {
   def main(dir: String = "/usr/include/",i:Int=10) {
-    val r = new DirBWTReader("/usr/include/","testdata/include",debugLevel=2,caching=true)
+    val r = new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true)
     
     //val r = new FileBWTReader("testdata/include.cache")
     
