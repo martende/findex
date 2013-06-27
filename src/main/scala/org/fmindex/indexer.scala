@@ -1,5 +1,12 @@
 package org.fmindex
 
+object IndexerAppCache extends optional.Application {
+    def main() {
+        val r = new FileBWTReader("testdata/include.cache")
+        val bm = new BWTMerger2(1024*1024*10,debugLevel=2)
+        val (of,af) = bm.merge(r)
+    }
+}
 
 object IndexerApp extends optional.Application {
   def main(dir: String = "/usr/include/",i:Int=10) {

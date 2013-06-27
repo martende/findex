@@ -12,10 +12,10 @@ object KMPBuffer {
 }
 class KMPBuffer(_size:Int,_bbsize:Int) {
     val size = _size
-    val bit_buffer_size = 64 * (_bbsize / 64)
+    val bit_buffer_size = 32 * (_bbsize / 32)
     val string = new Array[Byte](size)
     val kmp_shift = new Array[Int](size+1)
-    val bit_buffer = new Array[Long](_bbsize/64)
+    val bit_buffer = new Array[Int](_bbsize/32)
     
     var cur_bit:Int = 0
     var current:Int = 0
@@ -44,7 +44,6 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
         assert(testKmpShift(kmp_shift,string,size))
     }
     def rewind() {
-        printf("KMPBuffer.rewind %d %d %d\n",cur_bit,pending0,pending1)
         if ( pending0 > 0) {
             writeBit(false)
         } else if (  pending1 > 0) {
@@ -55,8 +54,6 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
         stored_bits = cur_bit
         cur_bit = 0
         current = 0
-        if ( stored_bits > 0)
-            printf("!%d bit(s) stored in bit buffer!\n",stored_bits)
     }
     def revisitChar(c:Byte):Option[Boolean] = {
         var dd:Boolean = false
@@ -125,20 +122,14 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
         }
     }
 
-    //uint64 len=read_run(gt,&(b->cur_bit),b->stored_bits,b->bit_buffer)       
+    //uint32 len=read_run(gt,&(b->cur_bit),b->stored_bits,b->bit_buffer)       
     def readBit()  = {
         assert(cur_bit < stored_bits,"readBit buffer full wtf cur_bit=%d stored_bits=%d".format(cur_bit,stored_bits)) 
         var gt:Int = 0
         var count:Long = 1
-        def gb(i:Int):Int = (( bit_buffer(i/64) >>  (i % 64) ) & 1).toInt
+        def gb(i:Int):Int = (( bit_buffer(i/32) >>  (i % 32) ) & 1).toInt
         gt = gb(cur_bit)
-        if (stored_bits == 1787) {
-            println("readBit",cur_bit,gt)
-            for (i <- 0 until 20 ) {
-                printf("%d,",gb(i+cur_bit))
-            }
-            println()
-        }
+
         cur_bit+=1
         count = 1 
         while ( count < KMPBuffer.LONG_RUN_LIMIT && 
@@ -147,15 +138,11 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             count+=1
             cur_bit+=1
         }
-        if (stored_bits == 1787) {
-            println("readBit count",cur_bit,gt,count)
-        }
         if ( count == KMPBuffer.LONG_RUN_LIMIT ) {
-            println("count == KMPBuffer.LONG_RUN_LIMIT",cur_bit,stored_bits,gt)
             var bit = 0
             var nbits = 0
             while (bit != 1) {
-                assert(cur_bit>=stored_bits)
+                assert(cur_bit<=stored_bits)
                 bit = gb(cur_bit)
                 cur_bit+=1
                 nbits+=1
@@ -163,7 +150,7 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             nbits-=1
             var gamma:Long = 1
             while ( nbits > 0) {
-                assert(cur_bit>=stored_bits)
+                assert(cur_bit<=stored_bits)
                 bit = gb(cur_bit)
                 cur_bit+=1
                 gamma = 2 * gamma + bit
@@ -171,24 +158,20 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             }
             count += gamma-1
         }
+
         (count,gt==1)
     }
     def writeBit(bit:Boolean) {
         val n = if ( bit ) pending1 else pending0
-        println("writeBit ",bit,n)
-        for (i<- 0 until 20 ) {
-            printf("%08x,",bit_buffer(i))
-        }
-        println()
-        
         var run:Int =  (n min KMPBuffer.LONG_RUN_LIMIT).toInt
+
         assert (cur_bit+run < bit_buffer_size,"Bit buffer full, write error")
         if (! bit ) {
             cur_bit+=run
         } else {
             var cur_bit_to=cur_bit+run
             while (cur_bit<cur_bit_to) {
-                bit_buffer(cur_bit/64) |= 1 << (cur_bit % 64)
+                bit_buffer(cur_bit/32) |= 1 << (cur_bit % 32)
                 cur_bit+=1
             }
         }
@@ -200,15 +183,12 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
             cur_bit += i
             while (i>=0) {
                 if ( ((v >> i) & 1) == 1 )
-                    bit_buffer(cur_bit/64) |= 1 << (cur_bit % 64)
+                    bit_buffer(cur_bit/32) |= 1 << (cur_bit % 32)
                 cur_bit+=1
                 i-=1
             }
         }
-        for (i<- 0 until 20 ) {
-            printf("%08x,",bit_buffer(i))
-        }
-        println()
+
     }
     
     def fillKmpShift(_kmp_shift:Array[Int],_string:Array[Byte],_size:Int) {

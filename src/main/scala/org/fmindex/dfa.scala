@@ -106,7 +106,10 @@ object NFA {
 
     }
 }
-class DFA(nstates:Int,nchars:Int) {
+
+class DFA(nstates:Int,nchars:Int,debugLevel:Int=0) {
+  def debug(l:Int,s: =>String  ) = if (l<=debugLevel) println(s)
+
   val moves:Array[Array[Int]] = Array.fill(nstates)(Array.fill(nchars)(-1))
   // Same as moves but linked in buckets
   // DFABucket('c-d'' ->1),DFAChar('f'->1),DFABucket('k-m'' ->1) - moves to c,d,f,k,l,m
@@ -239,12 +242,9 @@ class DFA(nstates:Int,nchars:Int) {
   case class StatePoint(state:Int,len:Int,sp:Int,ep:Int) {
     def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
       var ret = List()
-      println(this + " expand")
       val newStates = for (action <- buckets(state)) yield {
-        println("Action " + action)
         val expands = action match {
           case DFAChar(state,chr1) => {
-            println("getPrevRange",(sp,ep,chr1),sa.getPrevRange(sp,ep,chr1))
             sa.getPrevRange(sp,ep,chr1)
           }
           case _=> None
@@ -265,26 +265,26 @@ class DFA(nstates:Int,nchars:Int) {
     var results = List[DFAResult]()
     //println(moves(cur_state).mkString(","))
     var i = 0
-    dumpBuckets()
+    
     while( ! statesFront.isEmpty && i < 500) {
       val state = statesFront.head;
       statesFront = statesFront.tail
       visited = visited + state
-      printf("%2d. Take State=%s\n",i,state)
+      debug(2,"%2d. Take State=%s".format(i,state))
       val newStates = state.expand(sa)
       if (/*newStates.isEmpty && */finishStates(state.state)) {
         results=DFAResult(sa,state.len,state.sp,state.ep)::results
       }
-      printf("found %d new states [%s]\n",newStates.length,newStates,newStates.mkString(","))
+      debug(2,"found %d new states [%s]\n".format(newStates.length,newStates,newStates.mkString(",")))
+      
       for (s <- newStates ) if (visited(s)) {
-        printf("state visited %s\n",newStates)
+        debug(2,"state visited %s".format(newStates))
       } else {
         statesFront = statesFront + s
       }
       i+=1
     }
-    println("Result = " + results)
-    //println(statesFront.head.expand(sa))
+    
     results
   }
 }
@@ -397,7 +397,7 @@ object DFA {
     psc(Map(), Queue(init))
   }
 
-  def processLinkList(s:StartState) = {
+  def processLinkList(s:StartState,debugLevel:Int=0) = {
     def _processLinkList(s:AnyState,visited:tStateSet):tStateSet = {
       var v = visited + s
       for (l <- s.links if ! visited(l.to) ) {
@@ -406,7 +406,7 @@ object DFA {
       v
     }
     val visited = _processLinkList(s,Set[AnyState]())
-    val dfa = new DFA(visited.size,256)
+    val dfa = new DFA(visited.size,256,debugLevel=debugLevel)
     for ( v <- visited) dfa.addState(v)
     for ( v <- visited;l<-v.links) dfa.addLink(v,l.to,l.chr)
 

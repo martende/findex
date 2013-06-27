@@ -21,8 +21,12 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
   }
     else new DirBWTReader(_dir,_filename)
   override val filename:String = _filename
-  val files = recursiveListFiles(new File(_dir))
+  val mainDir = new File(_dir)
+  if ( ! mainDir.isDirectory ) throw new Exception("mainDir %s is not directory".format(mainDir))
+
+  val files = recursiveListFiles(mainDir)
   var filesStream = files
+
   //var in:java.io.FileInputStream = _
   var inb:java.io.BufferedInputStream = _ // new java.io.BufferedInputStream(in)
 
@@ -51,7 +55,7 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
         if ( these == null )
             Stream.empty
         else
-            these.filter(! _.isDirectory).toStream append these.filter{x:File => x.isDirectory || ! isBinary(x) }.flatMap(recursiveListFiles)
+            these.filter{ x:File => ! x.isDirectory && ! isBinary(x) }.toStream append these.filter{x:File => x.isDirectory }.flatMap(recursiveListFiles)
     }
   }
   def getByte = {
