@@ -4,9 +4,9 @@ import org.scalatest.FunSuite
 import org.fmindex._
 import scalax.file.Path
 import scalax.io._
-/*
+import org.fmindex.re2._
+
 class RE2Parser  extends FunSuite with RandomGenerator {
-  import org.fmindex.re2._
   test("re2post") {
     val r = REParser.re2post("abc")
     assert(r=="ab.c.","r="+r)
@@ -200,25 +200,32 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     assert(REParser.matchString(re,"aaabc")==true)
   }
 
-
   test("match SA basics") {
-    val sa = new SAISBuilder(fromString("mmabcacadabbbca".reverse))
-    sa.build
+    val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
+    sa.build()
     sa.buildOCC
-    sa.printSA()
-    var re1 = REParser.createNFA("mm.a.")
-    val results = ReParser.matchSA(re1,sa)
-
-    /*
-    val dfa = DFA.processLinkList(`ab*c`)
-    
-    assert(results.size == 2)
-    assert(results(0).toString=="cbbba")
-    assert(results(1).toString=="cba")
-    assert(sa.nextSubstr(results(1).sp,results(1).len)=="cba","sa.nextSubstr(results(1).sp,results(1).len)="+sa.nextSubstr(results(1).sp,results(1).len))
-    assert(sa.nextSubstr(results(0).sp,results(0).len)=="cbbba")
-    */
+    var re1 = REParser.createNFA("ma.b.")
+    val results = REParser.matchSA(re1,sa,debugLevel=0)
+    assert(results(0).toString == "[2 Results] bam")
+  }
+  test("match SA basics") {
+    val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
+    sa.build()
+    sa.buildOCC
+    var re1 = REParser.createNFA("ba|c.")
+    val results = REParser.matchSA(re1,sa,debugLevel=2)
+    assert(results.toString == "List(ca, [2 Results] cb)")
+  }
+}
+class RE2Search  extends FunSuite with RandomGenerator {
+  
+ test("match SA basics") {
+    val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
+    sa.build()
+    sa.buildOCC
+    var re1 = REParser.createNFA("ba|c.")
+    val results = REParser.matchSA(re1,sa,debugLevel=2)
+    assert(results.toString == "List(ca, [2 Results] cb)")
   }
 
 }
-*/

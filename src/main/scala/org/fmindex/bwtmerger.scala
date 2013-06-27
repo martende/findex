@@ -217,6 +217,10 @@ object BWTTempStorage {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".cache" 
   }
+  def genFMFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".fm" 
+  }
   var count = 0
 }
 
@@ -300,10 +304,95 @@ class BWTTempStorage(_basename:String,_size:Int,_eof:Int) {
     f.delete()
   }
 }
+class AUXLoader(f:File,bigEndian:Boolean=true) {
+    val in = new java.io.FileInputStream(f)
+    val inb = new java.io.DataInputStream(in)
+    val occ   = new Array[Long](BWTMerger2.ALPHA_SIZE)
+    
+    for (i<-0 until occ.length) {
+      occ(i) = if ( ! bigEndian ) java.lang.Long.reverseBytes(inb.readLong()) else inb.readLong()
+    }
+
+    inb.close
+    in.close
+    def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
+}
+
+class FMCreator(filename:String,debugLevel:Int=0) {
+  import java.io.RandomAccessFile
+  import java.io.FileInputStream
+  import java.io.BufferedInputStream
+
+  val f = new File(filename)
+  if (!f.exists()) throw new Exception("File %s does not exists".format(filename))
+  
+  val aux = new AUXLoader(new File(BWTTempStorage.genAuxFilename(filename)))
+  val occ = aux.occ
+
+  val outf = new File(BWTTempStorage.genFMFilename(filename))
+  
+  val bucketStarts = {
+    var i = 0
+    val bs = new Array[Long](BWTMerger2.ALPHA_SIZE)    
+    var tot:Long = 0
+    while (i < BWTMerger2.ALPHA_SIZE) {
+      bs(i)+=tot
+      tot+=occ(i)
+      i+=1
+    }
+    bs
+  }
+
+  /*
+    def buildOCC() {
+    assert(OCC==null,"OCC already exists")
+    assert(SA(0)>=0,"Suffix Array not built")
+    OCC = new Array[Int](n)
+    val bkt=bucketStarts.clone()
+    for ( i<- 0 until n) {
+      val c = BWT(i)
+      val j = bkt(c)
+      OCC(j)=i
+      bkt(c)=(j+1)
+    }
+  }
+  */
+  def create():File = {
+    val outb = new RandomAccessFile(outf,"rw")
+    
+    val inb = new FileInputStream(f)
+    val filelen = f.length()
+    println(filelen)
+    val inbb = new BufferedInputStream(inb)
+    var readb = 0
+    val bkt=bucketStarts.clone()
+    var i = 0L
+    val progress = ConsoleProgress("Progress",100)
+
+    while (readb != -1) {
+      readb = inbb.read()
+      if (readb != -1 ) {
+        val j = bkt(readb)
+        outb.seek(j*8)
+        outb.writeLong(i)
+        bkt(readb)=(j+1)
+      }
+      i+=1
+      if ( i % 1000 == 0)
+        progress(i.toFloat/filelen)
+      
+    }
+    inb.close()
+    inbb.close()
+    outb.close()
+    outf
+  }
+}
 
 object BWTMerger2 {
   val ALPHA_SIZE = 256
 }
+
 class BWTMerger2(size:Int,debugLevel:Int=0) {
   val t1:Array[Byte] = new Array[Byte](size)
   val t2:Array[Byte] = new Array[Byte](size)

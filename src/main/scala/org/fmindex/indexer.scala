@@ -8,6 +8,13 @@ object IndexerAppCache extends optional.Application {
     }
 }
 
+object FMCreatorApp extends optional.Application {
+    def main(file:String) {
+        val bm = new FMCreator(file)
+        bm.create()
+    }
+}
+
 object IndexerApp extends optional.Application {
   def main(dir: String = "/usr/include/",i:Int=10) {
     val r = new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true)

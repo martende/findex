@@ -1,6 +1,10 @@
 package org.fmindex.re2
+
 import scala.collection.mutable.Stack
+import org.fmindex.SuffixWalkingAlgo
+
 object REParser {
+
     def re2post(str:String):String = {
         var i = 0
         val l = str.length
@@ -84,7 +88,9 @@ object REParser {
     }
 
     case class ConstState(c:Int,out:LinkState=new LinkState()) extends BaseState {
+        def next = out.s
         override def links:List[LinkState] = List(out)
+        override def toString = if (c >= 0x20 && c < 0x7f) "ConstState('%c')".format(c) else "ConstState(%d)".format(c) 
     }
     case class SplitState(out1:LinkState,out2:LinkState) extends BaseState {
         override def links:List[LinkState] = if ( out2 != null) List(out1,out2) else List(out1)
@@ -212,39 +218,36 @@ object REParser {
         var re1 = REParser.createNFA(re2post(re))
         matchNFA(re1,s,debug)
     }
-/*
-      case class StatePoint(state:Int,len:Int,sp:Int,ep:Int) {
-        def expand(sa:SuffixAlgo):List[StatePoint] = {
-          var ret = List()
-          println(this + " expand")
-          val newStates = for (action <- buckets(state)) yield {
-            println("Action " + action)
-            val expands = action match {
-              case DFAChar(state,chr1) => {
-                println("getPrevRange",(sp,ep,chr1),sa.getPrevRange(sp,ep,chr1))
-                sa.getPrevRange(sp,ep,chr1)
-              }
-              case _=> None
+
+
+      
+    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) {
+        def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
+            if ( s == null || nlist(s)) nlist else
+            s match {
+                case SplitState(out1,out2) => 
+                    val t = liststates(nlist,out1.s)
+                    liststates(t,out2.s)
+                case MatchState | ConstState(_,_) => 
+                    nlist + s
             }
-            expands match {
-              case Some((sp1,ep1)) => Some(StatePoint(action.state,len+1,sp1,ep1))
-              case _=> None
-            }
-          }
-          newStates.flatten
-        }
-      }
-      */
-      /*
-    case class StatePoint(front:List[BaseState],len:Int,sp:Int,ep:Int) {
-        def expand(sa:SuffixAlgo):List[StatePoint] = {
+        def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
             var ret = List()
+            state match {
+                case el @ ConstState(chr1,_)  => sa.getPrevRange(sp,ep,chr1.toByte) match {
+                    case Some((sp1,ep1))      => liststates(Set(),el.next).toList.map {StatePoint(len+1,_,sp1,ep1)}
+                    case None                 => List()
+                }
+                case _ => ???
+            }
         }
     }
-    case class SAResult(sa:SuffixAlgo,len:Int,sp:Int,ep:Int) {
+    
+    case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
         val cnt = ep - sp
-        lazy val strResult:String = if ( cnt ==1 ) 
-          sa.nextSubstr(sp,len)
+        lazy val strResult:String = 
+          if ( cnt ==1 ) 
+            sa.nextSubstr(sp,len)
           else if ( cnt > 0) 
             "["+cnt + " Results] " + sa.nextSubstr(sp,len)
           else
@@ -252,31 +255,58 @@ object REParser {
         override def toString = strResult
     }
 
-    def matchSA(nfa:BaseState,sa:SuffixAlgo) = {
-        //var cur_state = 0
+    def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0) = {
+        def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
+        def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
+            if ( s == null || nlist(s)) nlist else
+            s match {
+                case SplitState(out1,out2) => 
+                    val t = liststates(nlist,out1.s)
+                    liststates(t,out2.s)
+                case MatchState | ConstState(_,_) => 
+                    nlist + s
+            }
         
         //var visited = Set[StatePoint]()
         var results = List[SAResult]()
         //println(moves(cur_state).mkString(","))
         var i = 0
 
-        var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
+        var statesFront = liststates( Set(),nfa ).map {
+            StatePoint(0,_,0,sa.n)
+        }.toList
+        println(statesFront)
+        //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
-        while( ! statesFront.isEmpty && i < 1) {
+        
+        while( ! statesFront.isEmpty && i < 10) {
             val state = statesFront.head
             statesFront = statesFront.tail
-            printf("%2d. Take State=%s\n",i,state)
+            debug(2,"%2d. Take State=%s",i,state)
             val newStates = state.expand(sa)
+            debug(2,"newStates %s",newStates)
+            newStates.foreach {
+                s:StatePoint=> s.state match {
+                    case MatchState => 
+                    results::=SAResult(sa,s.len,s.sp,s.ep)
+                    case _ => statesFront ::= s
+                }
+            }
+            debug(2,"statesFront %s",statesFront)
+            /*
             if (/*newStates.isEmpty && */finishStates(state.state)) {
                 results=SAResult(sa,state.len,state.sp,state.ep)::results
             }
             statesFront = statesFront + newStates
+            */
             i+=1
+            
         }
+        
+        debug(1,"Result = %s",results)
 
-        println("Result = " + results)
         //println(statesFront.head.expand(sa))
         results
     }
-    */
+    
 }
