@@ -208,15 +208,16 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     val results = REParser.matchSA(re1,sa,debugLevel=0)
     assert(results(0).toString == "[2 Results] bam")
   }
-  test("match SA basics") {
+  test("match SA basics2") {
     val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
     sa.build()
     sa.buildOCC
     var re1 = REParser.createNFA("ba|c.")
-    val results = REParser.matchSA(re1,sa,debugLevel=2)
+    val results = REParser.matchSA(re1,sa,debugLevel=0)
     assert(results.toString == "List(ca, [2 Results] cb)")
   }
 }
+/*
 class RE2Search  extends FunSuite with RandomGenerator {
   
  test("match SA basics") {
@@ -229,3 +230,4 @@ class RE2Search  extends FunSuite with RandomGenerator {
   }
 
 }
+*/

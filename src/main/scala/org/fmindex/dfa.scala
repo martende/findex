@@ -445,7 +445,7 @@ object DFAPlay extends optional.Application {
     var b = dfa.buckets
     dfa.dumpBuckets()    
     
-    println(dfa.matchString("abmb"))
+    //println(dfa.matchString("abmb"))
   }
 
 }

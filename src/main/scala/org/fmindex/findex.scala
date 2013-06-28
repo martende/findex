@@ -242,8 +242,7 @@ trait SAISAlgo[T] extends BWTBuilder[T] with BWTDebugging[T] {
           if (cmpSuff(d) ) diff=true else d+=1
         }
         if ( d < n ) diff = diff || cmpSuff(d)
-      }
-      else
+      } else
         diff = true
 
       if ( diff/* || cmpSuff(pos,prev,d)*/) {
@@ -422,39 +421,6 @@ trait NaiveSearcher extends SuffixWalkingAlgo {
   }
 }
 
-/*
-class OnullBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int,alphaSize:Int=256) extends SuffixAlgo {
-  val n = bwt.length
-  
-  val TWO224 = 0x01000000
-  val MASK24 = 0x00ffffff
-  val MASK8  = 0x000000ff
-
-  def buildTable = {
-    var i = 0
-    var sb = 0
-    while ( i < n) {
-      if ( i & MASK24 ) {
-        var j = 0
-        while ( j < alphaSize) {
-          sbCounts(sb)(j) = count(j)
-          j+=1
-        }
-        sb+=1
-      }
-      if ( i & MASK8 ) {
-        var j = 0
-        while ( j < alphaSize) {
-          num = count(j) - sbCounts(sb-1)(j)
-          j+=1
-          bwt32(i+j) += num
-        }
-      }
-      if ( i != rk0 ) count(bwt(i))+=1
-    }
-  }
-}
-*/
 class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends SuffixAlgo {
   val K = bucketStarts.length
   val n = bwt.length

@@ -80,5 +80,46 @@ object Util {
       }
     }
   }
+  object string {
+    val ALPHA_SIZE = 256
+    // string to counts array
+    def str2c(t:Array[Byte]) = {
+      val l = t.length
+      var i = 0 
+      val occ = new Array[Long](ALPHA_SIZE)
+      while (i < l) {
+        occ(t(i)&0xff)+=1
+        i+=1
+      }
+      occ
+    }
+    // string to bucket starts array
+    def str2bs(t:Array[Byte]) = {
+      var i = 0
+      val c = str2c(t)
+      val bs = new Array[Long](ALPHA_SIZE)    
+      var tot = 0L
+      while (i < ALPHA_SIZE) {
+        bs(i)+=tot
+        tot+=c(i)
+        i+=1
+      }
+      bs
+    }
+    // string (bwt) to bucket starts array
+    def bwt2occ(bwt:Array[Byte]) = {
+      occ = new Array[Int](n)
+      val bkt=str2bs(bwt)
+      for ( i<- 0 until n) {
+        val c = bwt(i)
+        val j = bkt(c)
+        occ(j)=i
+        bkt(c)=(j+1)
+      }
+      occ
+    }
+
+  }
+  
 
 }

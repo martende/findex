@@ -1,5 +1,6 @@
 package org.fmindex
 
+import Util._
 import java.io.File
 import org.apache.commons.io.FilenameUtils
 import scala.collection.mutable.BitSet
@@ -205,10 +206,10 @@ object BWTTempStorage {
     fileNameWithOutExt + "."  + count + ".tmp.bwt" 
   }
 
-  def genFilename(s:String) = {
+  def genBWTFilename(s:String) = {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".bwt" 
-  }
+  }  
   def genAuxFilename(s:String) = {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".aux" 
@@ -278,7 +279,7 @@ class BWTTempStorage(_basename:String,_size:Int,_eof:Int) {
   def convertToPermanent():File =  {
     if (!closed) close  
 
-    val to = new File(BWTTempStorage.genFilename(basename))
+    val to = new File(BWTTempStorage.genBWTFilename(basename))
     
     if (! f.renameTo(to)) {
       throw new Exception("cant rename")
@@ -304,6 +305,7 @@ class BWTTempStorage(_basename:String,_size:Int,_eof:Int) {
     f.delete()
   }
 }
+
 class AUXLoader(f:File,bigEndian:Boolean=true) {
     val in = new java.io.FileInputStream(f)
     val inb = new java.io.DataInputStream(in)
@@ -318,7 +320,25 @@ class AUXLoader(f:File,bigEndian:Boolean=true) {
     def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
 }
 
-class FMCreator(filename:String,debugLevel:Int=0) {
+class BWTLoader(f:File,bigEndian:Boolean=true) {
+  val in = new java.io.FileInputStream(f)
+  val inb = new java.io.DataInputStream(in)
+  val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+  val eof =  if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+
+  if ( size + 0x10 != f.length  ) throw new Exception("File %s bad size %d != %d + 16 ".format(f.toString,size,f.length))
+
+  def readAll() {
+    val t = new Array[Byte](size)
+    inb.read(t)
+  }
+  def close() {
+    inb.close
+    in.close    
+  }
+}
+
+class FMCreator(filename:String,bufferSize:Int=1024,debugLevel:Int=0,bigEndian:Boolean=true) {
   import java.io.RandomAccessFile
   import java.io.FileInputStream
   import java.io.BufferedInputStream
@@ -326,7 +346,8 @@ class FMCreator(filename:String,debugLevel:Int=0) {
   val f = new File(filename)
   if (!f.exists()) throw new Exception("File %s does not exists".format(filename))
   
-  val aux = new AUXLoader(new File(BWTTempStorage.genAuxFilename(filename)))
+  val aux = new AUXLoader(new File(BWTTempStorage.genAuxFilename(filename)),bigEndian=bigEndian)
+  val bwt = new BWTLoader(new File(BWTTempStorage.genBWTFilename(filename)),bigEndian=bigEndian)
   val occ = aux.occ
 
   val outf = new File(BWTTempStorage.genFMFilename(filename))
@@ -342,45 +363,108 @@ class FMCreator(filename:String,debugLevel:Int=0) {
     }
     bs
   }
-
-  /*
-    def buildOCC() {
-    assert(OCC==null,"OCC already exists")
-    assert(SA(0)>=0,"Suffix Array not built")
-    OCC = new Array[Int](n)
-    val bkt=bucketStarts.clone()
-    for ( i<- 0 until n) {
-      val c = BWT(i)
-      val j = bkt(c)
-      OCC(j)=i
-      bkt(c)=(j+1)
-    }
-  }
-  */
-  def create():File = {
+  
+  def createSlow():File = {
     val outb = new RandomAccessFile(outf,"rw")
     
     val inb = new FileInputStream(f)
-    val filelen = f.length()
-    println(filelen)
+    val bwtlen = bwt.size
+    
     val inbb = new BufferedInputStream(inb)
     var readb = 0
     val bkt=bucketStarts.clone()
     var i = 0L
     val progress = ConsoleProgress("Progress",100)
 
+    val elSize = if ( bwtlen < 0xffffffffL ) 4 else 8
+
+    if ( elSize == 8 ) ???
+
+    outb.writeInt(elSize) // Item Size 
+    outb.writeLong(elSize) // Item Size 
+
     while (readb != -1) {
       readb = inbb.read()
       if (readb != -1 ) {
         val j = bkt(readb)
-        outb.seek(j*8)
-        outb.writeLong(i)
+        outb.seek(j*elSize)
+        outb.writeInt(i.toInt)
         bkt(readb)=(j+1)
       }
       i+=1
       if ( i % 1000 == 0)
-        progress(i.toFloat/filelen)
+        progress(i.toFloat/bwtlen)
       
+    }
+    inb.close()
+    inbb.close()
+    outb.close()
+    outf
+  }
+
+  def create():File = {
+    var tmpBuffer:Array[Byte]  = null
+
+    val outb = new RandomAccessFile(outf,"rw")
+    
+    val inb = new FileInputStream(f)
+    val bwtlen = bwt.size
+    
+    val inbb = new BufferedInputStream(inb)
+    var readb = 0
+    val bkt=bucketStarts.clone()
+    var i = 0L
+    val progress = ConsoleProgress("Progress",100)
+
+    val elSize = if ( bwtlen < 0xffffffffL ) 4 else 8
+    // How oft refreshen progressbar - should be abhangig von bwtlen
+    val pCoeff = 10000
+
+    if ( elSize == 8 ) ??? 
+
+    tmpBuffer = new Array[Byte](bufferSize)
+
+    val bucketBuferSize = bufferSize/BWTMerger2.ALPHA_SIZE
+    val bucketOffsets   = new Array[Int](BWTMerger2.ALPHA_SIZE)
+    def getStartForChar(b:Int) = bucketBuferSize * b 
+    def setIntValOn(i:Int,v:Int) {
+      tmpBuffer(i+0) = (v >> 24).toByte;
+      tmpBuffer(i+1) = (v >> 16).toByte;
+      tmpBuffer(i+2) = (v >> 8).toByte;
+      tmpBuffer(i+3) = (v /*>> 0*/).toByte;
+    }
+    outb.writeInt(elSize) // Item Size 
+    outb.writeLong(bwtlen) // Item Size 
+
+    while (readb != -1) {
+      readb = inbb.read()
+      
+      if (readb != -1 ) {
+        setIntValOn(bucketOffsets(readb) + getStartForChar(readb) , i.toInt )
+        bucketOffsets(readb)+=elSize
+        if ( bucketOffsets(readb) == bucketBuferSize) {
+          //println("flush",i,readb,bucketBuferSize)
+          val j = bkt(readb)
+          outb.seek(j*elSize)
+          val bs = getStartForChar(readb)
+          outb.write(tmpBuffer,bs,bucketBuferSize)
+          bkt(readb)+=bucketBuferSize
+          bucketOffsets(readb)=0
+        }
+      }
+      
+      i+=1
+      if ( i % pCoeff == 0)
+        progress(i.toFloat/bwtlen)
+      
+    }
+    for ( i<- 0 until BWTMerger2.ALPHA_SIZE) {
+      if ( bucketOffsets(i) != 0) {
+          val j = bkt(i)
+          outb.seek(j*elSize)
+          val bs = getStartForChar(i)
+          outb.write(tmpBuffer,bs,bucketBuferSize)
+      }
     }
     inb.close()
     inbb.close()
@@ -542,8 +626,6 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     bwt
   }
 
-
-
   def calcOcc(t:IndexedSeq[Byte]) = {
     val l = t.length
     var i = 0 
@@ -554,6 +636,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     }
     occ
   }
+
   def calcBs(occ:Array[Long]) = {
     var i = 0
     val bs = new Array[Long](BWTMerger2.ALPHA_SIZE)    
@@ -685,6 +768,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
 
     (bwt,searcher,rankFirst,rankLast)
   }
+
   def longSuffixCmp(idx:Int,localPfx:Array[Byte],tLast:Array[Byte]) = {
     var k = KMPBuffer.PFX_BUFFER_SIZE-1
     var ret:Int = 0
@@ -731,15 +815,11 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
           }
         } else if (curRank > rklst) {
           curRank+=1
-        }/* else {
-
-        }*/
+        }
       }
       pfxBuffer(i%KMPBuffer.PFX_BUFFER_SIZE) = c
       gaps(curRank)+=1
       if (kmpIn != null) kmpIn.addChar(c,curRank>rk0)
-      //if (i < 400)
-      //  printf("%d. c=%c rank=%d occ(%c,%d)=%d oldRank=%d\n",i,c,curRank,c,oldRank-1,searcher.occ(c,oldRank-1),oldRank)
       i+=1
     }
     r.close
@@ -749,6 +829,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
 
     gaps
   }
+
   def mergeTemp(oldStorage:BWTTempStorage,gaps:Array[Int],bwt:Array[Byte],curRank0:Int,_lastChar:Byte):BWTTempStorage = {
     var lastChar = _lastChar
     val n = bwt.length
@@ -771,14 +852,10 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
         if (i == curRank0) assert(tot + i + gi == newOef)
         Some(bwt(i))
       } else None
-      
-      //printf("i=%d gi=%d next_bwt_char=0x%02x tot=%d old_eof=%d\n",i,gi,nextBwtChar.getOrElse(0),tot,oldEof);
 
       if ( tot > oldEof || (tot + gi <= oldEof )) {
-        //printf("block_transfer.A\n");
         bwtTs.blockTransfer(bwtIn,gi,nextBwtChar)
       } else {
-        //printf("block_transfer.B\n");
         bwtTs.blockTransfer(bwtIn,oldEof-tot,Some(lastChar))
         lastChar = bwtIn.read().toByte
         bwtTs.blockTransfer(bwtIn,gi-(oldEof-tot)-1,nextBwtChar)
@@ -787,16 +864,15 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       tot += gi
       i+=1
     }
-    //println("mergeTemp tot=",tot)
     bwtIn.close
     bwtTs.close
     bwtTs
   }
+
   def time[R](block: => R,evaled:Long => Unit): R = {
     val t0 = System.nanoTime()
     val result = block    // call-by-name
     val t1 = System.nanoTime()
-    //println("Elapsed time: " + (t1 - t0) + "ns")
     evaled(t1-t0)
     result
   }

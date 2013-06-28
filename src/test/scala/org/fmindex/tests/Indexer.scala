@@ -57,8 +57,6 @@ trait RandomGenerator {
 }
 
 class BasicTests extends FunSuite with RandomGenerator {
-
-
   test("SAISBuilder basics") {
     /*                   01234567890 */
     val bs = fromString("missisippi")
@@ -81,10 +79,10 @@ class BasicTests extends FunSuite with RandomGenerator {
     sa.induceSAl()
     //sa.printSA()
   }
+
   test("buckets test") {
     val sa = new SAISBuilder(fromString("aaaabbbccdd"))
     assert(sa.bucketStarts(0)==0 && sa.bucketStarts(1)==1 && sa.bucketStarts(98)==5 && sa.bucketStarts(99)==8)
-
   }
   
   test("article example") {
@@ -107,8 +105,6 @@ class BasicTests extends FunSuite with RandomGenerator {
 
     assert(Array(16,15,14,10,6,2,11,7,3,1,0,13,12,9,5,8,4).sameElements(sa.SA))
 
-    //sa.printSA()
-
     naive.build()
     
     // actually everething is already sorted
@@ -129,11 +125,13 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert(Array(16,15,14,10,6,2,11,7,3,1,0,13,12,9,5,8,4).sameElements(sa.SA))
 
   }
+
   test("1000 syms") {
     val in = randomAlphanumericString(1000)
     val sa = new SAISBuilder(fromString(in))
     sa.build()
   }
+
   test("nonaive example - suffixes are not sorted after first induce step") {
 
     val in = // randomAlphanumericString(200)
@@ -171,11 +169,13 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert(sa.naiveIsSASorted())
     assert(Array(10,9,6,4,1,0,8,7,5,3,2).sameElements(sa.SA))
   }
+
   test("sais builder") {
     val b = Array[Byte](97,115,100,10,97,115,100,10,-1,97,115,100,10,98,101,108,107,97,64,98,101,108,107,97,45,104,111,109,101,58,47,116,109,112,47,116,36,32,99,97,116,32,62,32,116,50,46,116,120,116,10,97,115,100,97,115,100,10,-1,0)
     val k = new SAISBuilder(b)
     k.build()
   }
+
   test("nulled array") {
     var nb = new  ByteArrayNulledWrapper("mmiissiissiippii".getBytes())
     var b0 = fromString("mmiissiissiippii")
@@ -278,9 +278,8 @@ class BasicTests extends FunSuite with RandomGenerator {
     assert(Array(0,1,1,1,2,2,2,2,2,2,2,2).sameElements(row('r')))
     assert(Array(0,0,0,0,0,0,0,0,0,0,0,0).sameElements(row('x')))
 
-    //assert(sa.occ(0,3)==1,"sa.occ(0,3)="+sa.occ(0,3))
-    //assert(sa.occ(0,4)==1,"sa.occ(0,3)="+sa.occ(0,4))
   }
+
   test("plain searching") {
     val sa = new SAISBuilder(fromString("abracadabra"))
     sa.build()
@@ -292,6 +291,7 @@ class BasicTests extends FunSuite with RandomGenerator {
       case _ => assert(false ,"Bad answer")
     }
   }
+
   test("BWT walki") {
     val sa = new SAISBuilder(fromString("abracadabra"))
     sa.build()
@@ -568,34 +568,34 @@ class KMP extends FunSuite with RandomGenerator {
 
 
 class MergerTest extends FunSuite {
-  import java.io.File
+    import java.io.File
 
-  class BWTLoader(f:File,bigEndian:Boolean=true) {
-    val in = new java.io.FileInputStream(f)
-    val inb = new java.io.DataInputStream(in)
-    val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
-    val eof =  if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
-    val b   = new Array[Byte](size.toInt)
-    val rdn = inb.read(b)
-    assert(rdn==size)
-    inb.close
-    in.close
-    def == (that: BWTLoader): Boolean = size == that.size && eof == that.eof && b.sameElements(that.b)
-  }
-
-  class AUXLoader(f:File,bigEndian:Boolean=true) {
-    val in = new java.io.FileInputStream(f)
-    val inb = new java.io.DataInputStream(in)
-    val occ   = new Array[Long](BWTMerger2.ALPHA_SIZE)
-    
-    for (i<-0 until occ.length) {
-      occ(i) = if ( ! bigEndian ) java.lang.Long.reverseBytes(inb.readLong()) else inb.readLong()
+    class BWTLoader(f:File,bigEndian:Boolean=true) {
+      val in = new java.io.FileInputStream(f)
+      val inb = new java.io.DataInputStream(in)
+      val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+      val eof =  if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
+      val b   = new Array[Byte](size.toInt)
+      val rdn = inb.read(b)
+      assert(rdn==size)
+      inb.close
+      in.close
+      def == (that: BWTLoader): Boolean = size == that.size && eof == that.eof && b.sameElements(that.b)
     }
 
-    inb.close
-    in.close
-    def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
-  }
+    class AUXLoader(f:File,bigEndian:Boolean=true) {
+      val in = new java.io.FileInputStream(f)
+      val inb = new java.io.DataInputStream(in)
+      val occ   = new Array[Long](BWTMerger2.ALPHA_SIZE)
+      
+      for (i<-0 until occ.length) {
+        occ(i) = if ( ! bigEndian ) java.lang.Long.reverseBytes(inb.readLong()) else inb.readLong()
+      }
+
+      inb.close
+      in.close
+      def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
+    }
 
     test("FileBWTReader") {
       val r = new FileBWTReader("testdata/test.txt")
@@ -782,7 +782,6 @@ class MergerTest extends FunSuite {
     }
 
     test("BWTMerger testdata/2048-0.txt second segment should have sa[0] = 0") {
-      //val r = new DirBWTReader("testdata/t1","testdata/t1",debugLevel=1)
       val r = new FileBWTReader("testdata/test2048-2.txt")
       val bm = new BWTMerger2(1024,debugLevel=0)
       val (of,af) = bm.merge(r)
@@ -816,6 +815,16 @@ class MergerTest extends FunSuite {
 
 }
 
+class BWTCreatorTest extends FunSuite {
+  test("fm for test1024.txt") {
+    val fc = new FMCreator("testdata/test1024.cmp.bwt",1024*10,bigEndian=false)
+    fc.create()
+    val bl = BWTLoader(new File("testdata/test1024.cmp.bwt"),bigEndian=false)
+    val bwt = bl.readAll()
+    
+  }
+}
+
 class DirBWTReaderTest extends FunSuite {
   test("DirBWTReader testdata/") {
     val r = new DirBWTReader("testdata/t1",debugLevel=0)
@@ -838,7 +847,8 @@ class UtilTest extends FunSuite {
 }
 
 class MergerTest2 extends FunSuite {
-   class BWTLoader(f:File,bigEndian:Boolean=true) {
+
+  class BWTLoader(f:File,bigEndian:Boolean=true) {
     val in = new java.io.FileInputStream(f)
     val inb = new java.io.DataInputStream(in)
     val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
@@ -850,6 +860,7 @@ class MergerTest2 extends FunSuite {
     in.close
     def == (that: BWTLoader): Boolean = size == that.size && eof == that.eof && b.sameElements(that.b)
   }
+
   class AUXLoader(f:File,bigEndian:Boolean=true) {
     val in = new java.io.FileInputStream(f)
     val inb = new java.io.DataInputStream(in)
@@ -863,53 +874,7 @@ class MergerTest2 extends FunSuite {
     in.close
     def == (that: AUXLoader): Boolean = occ.sameElements(that.occ)
   }
-  /*
-  test("KMPBuffer") {
-    val t = new Array[Byte](1024)
-    val kmpIn = KMPBuffer.init(t)
-    def writeBit(v:Boolean,i:Int) = {
-      if(v){
-        kmpIn.pending1 = i
-      } else {
-        kmpIn.pending0 = i
-      }
-      kmpIn.writeBit(v)
-    }
-    writeBit(true,7)
-    //[info] 00000007,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    //[info] !3 bit(s) stored in bit buffer!
-    writeBit(true,3)
-    //[info] 00000007,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    //[info] BWTMerger2.merge: start step 7 lastStep=23 sec readed: 70.0 Mb speed=431.4 k/sec Avgspeed=0.7 M/sec saisLastIteration = 4 diskread = 0 diskreadTotal = 1 calcGaps = 14 calcGapsTotal =47
-    //[info] KMPBuffer.rewind 3 1 0
-    writeBit(false,1)
-    //[info] 00000007,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    //[info] !4 bit(s) stored in bit buffer!
-    writeBit(true,2)
-    //[info] 00000003,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    //[info] BWTMerger2.merge: start step 8 lastStep=27 sec readed: 80.0 Mb speed=368.1 k/sec Avgspeed=0.6 M/sec saisLastIteration = 4 diskread = 0 diskreadTotal = 2 calcGaps = 18 calcGapsTotal =65
-    //[info] KMPBuffer.rewind 2 5 0
-    writeBit(false,5)
-    //[info] 00000003,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    //[info] !7 bit(s) stored in bit buffer!
-    writeBit(false,22)
-    //[info] 001c0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(true,1)
-    //[info] 003c0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(false,1)
-    //[info] 003c0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(true,1)
-    //[info] 00bc0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(false,1)
-    //[info] 00bc0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(true,2)
-    //[info] 06bc0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(false,6)
-    //[info] 06bc0000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-    writeBit(true,1)
-    //[info] 06bc0002,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,
-  }
-  */
+
   test("KMPBuffer2") {
     /*
     emulate 
@@ -927,18 +892,4 @@ class MergerTest2 extends FunSuite {
     val gt = kmpIn.readBit()
   }
   
-
-  /*
-  test("justi") {
-    val r = new DirBWTReader("/usr/include","testdata/include",debugLevel=1)
-    val out = new java.io.FileOutputStream("/tmp/t.txt")
-
-    for ( i <- 0 until 134 * 1024) {
-      val c = r.getByte
-      out.write(c)
-    }
-  }
-  */
-  
-
 }
