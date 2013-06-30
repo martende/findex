@@ -164,8 +164,7 @@ class KMPBuffer(_size:Int,_bbsize:Int) {
     def writeBit(bit:Boolean) {
         val n = if ( bit ) pending1 else pending0
         var run:Int =  (n min KMPBuffer.LONG_RUN_LIMIT).toInt
-        println("writeBit current_bit=%d stored_bits=%d".format(cur_bit,stored_bits))
-
+    
         assert (cur_bit+run < bit_buffer_size,"Bit buffer full, write error")
         if (! bit ) {
             cur_bit+=run
