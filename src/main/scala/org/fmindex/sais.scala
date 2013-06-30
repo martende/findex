@@ -105,7 +105,6 @@ class SAISBuilder(_s:ArrayWrapper[Byte]) extends SAISAlgo[Byte] with NaiveSearch
     cf(c) + occ(c,i - 1)
   }
   def getNextI(i:Int) = {
-    val c = BWT(i)
     OCC(i)
   }
   def prevSubstr(sp:Int,len:Int):String = {

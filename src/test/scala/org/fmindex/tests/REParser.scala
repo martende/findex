@@ -216,18 +216,88 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     val results = REParser.matchSA(re1,sa,debugLevel=0)
     assert(results.toString == "List(ca, [2 Results] cb)")
   }
-}
-/*
-class RE2Search  extends FunSuite with RandomGenerator {
-  
- test("match SA basics") {
-    val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
-    sa.build()
-    sa.buildOCC
-    var re1 = REParser.createNFA("ba|c.")
-    val results = REParser.matchSA(re1,sa,debugLevel=2)
-    assert(results.toString == "List(ca, [2 Results] cb)")
-  }
 
+  test("NaiveFMSearcher") {
+    val r = new FileBWTReader("testdata/small2.txt")
+    val bm = new BWTMerger2(1024)
+    val (bwtf,auxf) = bm.merge(r)
+
+    val fc = new FMCreator(bwtf.getAbsolutePath,1024)
+    val fmf = fc.create()
+
+    val fms = new NaiveFMSearcher(fmf.getAbsolutePath)
+
+    // iiiimppssss
+    assert(fms.pos2char(0).toChar=='i')
+    assert(fms.pos2char(1).toChar=='i')
+    assert(fms.pos2char(2).toChar=='i')
+    assert(fms.pos2char(3).toChar=='i')
+    assert(fms.pos2char(4).toChar=='m')
+    assert(fms.pos2char(5).toChar=='p')
+    assert(fms.pos2char(6).toChar=='p')
+    assert(fms.pos2char(7).toChar=='s')
+    assert(fms.pos2char(8).toChar=='s')
+    assert(fms.pos2char(9).toChar=='s')
+    assert(fms.pos2char(10).toChar=='s')
+
+    /*
+     0 -> 10. $missisippi
+     1 ->  9. i$missisipp
+     2 ->  6. ippi$missis
+     3 ->  4. isippi$miss
+     4 ->  1. issisippi$m
+     5 ->  0. missisippi$
+     6 ->  8. pi$missisip
+     7 ->  7. ppi$missisi
+     8 ->  5. sippi$missi
+     9 ->  3. sisippi$mis
+    10 ->  2. ssisippi$mi
+    */
+    
+    // i,p,s,s,m,m,p,i,i,s,i
+
+    // println(fms.bwt.readAll().map{_.toChar}.mkString(","))
+    // 0,6,7,9,4,1,5,2,3,8
+    // println(fms.fm.readAll().mkString(","))
+    assert(fms.getNextI(0)==5)
+    assert(fms.getNextI(5)==4)
+    assert(fms.getNextI(4)==10)
+    assert(fms.getNextI(10)==9)
+    assert(fms.getNextI(9)==3)
+
+    assert(fms.getPrevI(3)==9)
+    assert(fms.getPrevI(9)==10)
+    assert(fms.getPrevI(10)==4)
+    assert(fms.bwt.read(4).toChar=='m')
+    assert(fms.getPrevI(4)==5)
+    assert(fms.getPrevI(5)==0)
+    assert(fms.getPrevI(0)==1)
+  }
+  test("match SA FMindex") {
+    val r = new FileBWTReader("testdata/test1024.txt")
+    val bm = new BWTMerger2(1024)
+    val (bwtf,auxf) = bm.merge(r)
+
+    val fc = new FMCreator(bwtf.getAbsolutePath,1024)
+    val fmf = fc.create()
+
+    val sa = new NaiveFMSearcher(fmf.getAbsolutePath)
+    //println(sa.bucketStarts.mkString(","))
+    //assert(sa.pos2char(10).toChar)
+    var re1 = REParser.createNFA("ba|d|e|c.")
+    val results = REParser.matchSA(re1,sa,debugLevel=2).map{_.toString}.toSet
+    assert(results == Set("ec", "dc", "[2 Results] ac", "bc"))
+    //assert(results.toString == "List(ca, [2 Results] cb)")
+  }
 }
-*/
+
+class RE2Search  extends FunSuite with RandomGenerator {
+  test("match SA FMindex") {
+    val sa = new NaiveFMSearcher("testdata/include.fm")
+
+    var re1 = REParser.createNFA("ba|d|e|c.")
+    val results = REParser.matchSA(re1,sa,debugLevel=2).map{_.toString}.toSet
+    assert(results == Set("ec", "dc", "[2 Results] ac", "bc"))
+    //assert(results.toString == "List(ca, [2 Results] cb)")
+  }
+}

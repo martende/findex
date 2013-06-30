@@ -80,13 +80,13 @@ object Util {
       }
     }
   }
-  object string {
+  object bwtstring {
     val ALPHA_SIZE = 256
     // string to counts array
     def str2c(t:Array[Byte]) = {
       val l = t.length
       var i = 0 
-      val occ = new Array[Long](ALPHA_SIZE)
+      val occ = new Array[Int](ALPHA_SIZE)
       while (i < l) {
         occ(t(i)&0xff)+=1
         i+=1
@@ -95,26 +95,33 @@ object Util {
     }
     // string to bucket starts array
     def str2bs(t:Array[Byte]) = {
-      var i = 0
       val c = str2c(t)
-      val bs = new Array[Long](ALPHA_SIZE)    
-      var tot = 0L
+      c2bs(c)
+    }
+    // c to bucket starts array
+    def c2bs(c:Array[Int]) = {
+      val bs = new Array[Int](ALPHA_SIZE)
+      var tot = 0
+      var i = 0      
       while (i < ALPHA_SIZE) {
         bs(i)+=tot
         tot+=c(i)
         i+=1
       }
-      bs
+      bs 
     }
     // string (bwt) to bucket starts array
     def bwt2occ(bwt:Array[Byte]) = {
-      occ = new Array[Int](n)
+      val n = bwt.length
+      val occ = new Array[Int](n)
       val bkt=str2bs(bwt)
-      for ( i<- 0 until n) {
+      var i = 0
+      while ( i < n) {
         val c = bwt(i)
         val j = bkt(c)
         occ(j)=i
         bkt(c)=(j+1)
+        i+=1
       }
       occ
     }

@@ -816,13 +816,64 @@ class MergerTest extends FunSuite {
 }
 
 class BWTCreatorTest extends FunSuite {
-  test("fm for test1024.txt") {
-    val fc = new FMCreator("testdata/test1024.cmp.bwt",1024*10,bigEndian=false)
-    fc.create()
-    val bl = BWTLoader(new File("testdata/test1024.cmp.bwt"),bigEndian=false)
-    val bwt = bl.readAll()
-    
+  
+  test("fm for small.txt") {
+      val r = new FileBWTReader("testdata/small.txt")
+      val bm = new BWTMerger2(1024)
+      val (bwtf,auxf) = bm.merge(r)
+
+      val fc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
+      val fmf = fc.create()
+
+      val bwt = new BWTLoader(bwtf)
+      val a = bwt.readAll()
+      
+      val bwtd = (a.view.slice(0,bwt.eof.toInt)++Array[Byte](0)++a.view.slice(bwt.eof.toInt+1,a.length)).toArray
+      val testd = bwtstring.bwt2occ(bwtd)
+      
+      val fm = new FMLoader(fmf)
+      val d = fm.readAll()
+  
+      assert(d.sameElements(testd))
+      
   }
+  
+  test("fm for test1024.txt") {
+      val r = new FileBWTReader("testdata/test1024.txt")
+      val bm = new BWTMerger2(1024)
+      val (bwtf,auxf) = bm.merge(r)
+
+      val fc = new FMCreator(bwtf.getAbsolutePath,1024)
+      val fmf = fc.create()
+
+      val bwt = new BWTLoader(bwtf)
+      val a = bwt.readAll()
+      val testd = bwtstring.bwt2occ((a.view.slice(0,bwt.eof.toInt)++Array[Byte](0)++a.view.slice(bwt.eof.toInt+1,a.length)).toArray)
+      
+      val fm = new FMLoader(fmf)
+      val d = fm.readAll()
+
+      assert(d.sameElements(testd))
+  }
+
+  test("fm for test2048.txt") {
+      val r = new FileBWTReader("testdata/test2048.txt")
+      val bm = new BWTMerger2(1024)
+      val (bwtf,auxf) = bm.merge(r)
+
+      val fc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
+      val fmf = fc.create()
+
+      val bwt = new BWTLoader(bwtf)
+      val a = bwt.readAll()
+      val testd = bwtstring.bwt2occ((a.view.slice(0,bwt.eof.toInt)++Array[Byte](0)++a.view.slice(bwt.eof.toInt+1,a.length)).toArray)
+      
+      val fm = new FMLoader(fmf)
+      val d = fm.readAll()
+
+      assert(d.sameElements(testd))
+  }
+
 }
 
 class DirBWTReaderTest extends FunSuite {

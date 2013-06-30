@@ -308,7 +308,7 @@ abstract class ArrayWrapper[T](_s:Array[T])  {
   def update(i:Int,v:Int)
   // Abit Iterator API
   val length = _s.length
-  def slice(from: Int, until: Int) = _s.slice(from,until)
+  def slice(from: Int, until: Int):Array[T] = _s.slice(from,until)
   def foreach[U](f: T => U) {
     _s.foreach(f)
   }
@@ -374,7 +374,14 @@ class ByteArrayNulledOffsetWrapper(_s:Array[Byte],offset:Int) extends ArrayWrapp
     }
     f(0)
   }
-  //override def slice(from: Int, until: Int) = ???
+  override def slice(from: Int, until: Int) =  {
+    val r = new Array[Byte]((until min length) -from)
+    for (i<- from until until){
+      r(i-from)= if ( i == lastI) 0 else  _s(i+offset)
+    }
+    //_s.slice(from,until)
+    r
+  }
 }
 
 
@@ -420,6 +427,7 @@ trait NaiveSearcher extends SuffixWalkingAlgo {
     }
   }
 }
+
 
 class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends SuffixAlgo {
   val K = bucketStarts.length

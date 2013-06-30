@@ -275,7 +275,7 @@ object REParser {
         var statesFront = liststates( Set(),nfa ).map {
             StatePoint(0,_,0,sa.n)
         }.toList
-        debug(2,"Start statesFrom %s",i,statesFront)
+        debug(2,"Start statesFrom %s",statesFront)
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
         
