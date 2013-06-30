@@ -27,7 +27,8 @@ trait RandomGenerator {
   // Generate a random alphabnumeric string of length n
   def randomAlphanumericString(n: Int) =
     randomString("abcdefghijklmnopqrstuvwxyz0123456789")(n)
-
+  def randomDNAString(n: Int) =
+    randomString("ATGC")(n)
   //def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
   def fromString(ts:String) = ts.getBytes ++ List(0.asInstanceOf[Byte])
 
@@ -141,6 +142,7 @@ class BasicTests extends FunSuite with RandomGenerator {
     val naive = new NaiveBuilder(fromString(in))
     
     naive.build()
+    
     sa.buildStep1()
     // LMSess should be sorted
     val lms_count = sa.fillSAWithLMS()
@@ -161,7 +163,18 @@ class BasicTests extends FunSuite with RandomGenerator {
     sa2.build()
     assert(naive.SA.sameElements(sa2.SA))
   }
+  /*
+  test("saa") {
 
+    val in = randomDNAString(100)
+    
+    val sa = new SAISBuilder(fromString(in))
+    
+    sa.build()
+    sa.printSA()
+    
+  }
+  */
   test("naive sort test") {
     val sa = new NaiveBuilder(fromString("missisippi"))
     assert(! sa.naiveIsSASorted())
@@ -887,7 +900,26 @@ class DirBWTReaderTest extends FunSuite {
     val t=new Array[Byte](1024*10)
     val n = r.copyReverse(t)
     
-    assert(n==3070)   
+    assert(n==3073,"n != 3073 but %d".format(n))   
+  }
+  test("DirBWTReader testdata/t2") {
+    val r0 = new DirBWTReader("testdata/t2","testdata/t2-dir",debugLevel=0)
+    val t=new Array[Byte](1024*10)
+    val n = r0.copyReverse(t)
+    println("REVERSED COPY")
+    println(t.reverse.map{_.toChar}.view.slice(0,n).mkString(""))
+
+    val r = new DirBWTReader("testdata/t2","testdata/t2-dir",debugLevel=0)
+    val bm = new BWTMerger2(1024*1024*1,debugLevel=4)
+    val (of,af) = bm.merge(r)
+    val fm = new FMCreator("testdata/t2-dir.bwt",1024*1024)
+    fm.create()
+    val bwtl = new BWTLoader(new File("testdata/t2-dir.bwt"))
+    println(bwtl.eof.toInt)
+    val sa = new NaiveFMSearcher("testdata/include.fm")
+    println("------------------------")
+    println(sa.nextSubstr(sa.getNextI(bwtl.eof.toInt),100))
+
   }
 }
 

@@ -28,6 +28,7 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
 
   val files = recursiveListFiles(mainDir)
   var filesStream = files
+  var bytesCache:List[Byte] = List()
 
   //var in:java.io.FileInputStream = _
   var inb:java.io.BufferedInputStream = _ // new java.io.BufferedInputStream(in)
@@ -85,45 +86,68 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
     t.length - i - 1 
   }
 
+
   def _readByte(fStream:Stream[File],_inb:java.io.BufferedInputStream):Int = {
-    if ( _inb == null ) {
-      if ( fStream.isEmpty ) {
-        if ( inb != null ) inb.close()
-        inb = null
-        filesStream = fStream
-        -1 
-      }
-      else {
-        debug(3,"DirBWTReader: read file '%s'".format(fStream.head))
-        val opNewIs = try {
-          val in = new java.io.FileInputStream(fStream.head)
-          Some(new java.io.BufferedInputStream(in))
-        } catch {
-          case _:java.io.FileNotFoundException  => {
-            debug(2,"DirBWTReader: read file '%s' File Not Found".format(fStream.head))
-            None
-          }
-        } 
-        opNewIs match {
-          case Some(newIs) => _readByte(fStream.tail,newIs)
-          case None        => _readByte(fStream.tail,null)
-        }
-        
-      }
-    } else {
-      val b = _inb.read()
-      if ( b == -1 ) {
-        _readByte(fStream,null)
-      } else {
-        if (inb != _inb ) {
-          if ( inb != null) inb.close()
-          inb = _inb
+    if (bytesCache.isEmpty) {
+      if ( _inb == null ) {
+        if ( fStream.isEmpty ) {
+          if ( inb != null ) inb.close()
+          inb = null
           filesStream = fStream
+          -1 
         }
-        if (caching) cacheoutb.write(b)
-        b
-      }
+        else {
+          debug(3,"DirBWTReader: read file '%s'".format(fStream.head))
+          val opNewIs = try {
+            val in = new java.io.FileInputStream(fStream.head)
+            Some(new java.io.BufferedInputStream(in))
+          } catch {
+            case _:java.io.FileNotFoundException  => {
+              debug(2,"DirBWTReader: read file '%s' File Not Found".format(fStream.head))
+              None
+            }
+          } 
+          opNewIs match {
+            case Some(newIs) => _readByte(fStream.tail,newIs)
+            case None        => _readByte(fStream.tail,null)
+          }
+          
+        }
+      } else {
+        val b = _inb.read()
+        if ( b == -1 ) {
+          val nb = _readByte(fStream,null).toByte
+          bytesCache::=nb
+          if (caching) {
+            cacheoutb.write('@')
+            if (nb != -1) cacheoutb.write(b)
+          }
+          '@'
+        } else {
+          if (inb != _inb ) {
+            if ( inb != null) inb.close()
+            inb = _inb
+            filesStream = fStream
+          }
+          if ( b == 0) {
+            bytesCache::='0'
+            if (caching) {
+              cacheoutb.write('\\')
+              cacheoutb.write('0')
+            }
+            '\\'
+          } else {
+            if (caching) cacheoutb.write(b)
+            b
+          }
+        }
+      }  
+    } else {
+      val b = bytesCache.head
+      bytesCache=bytesCache.tail
+      b
     }
+    
   }
 
   def close {
@@ -406,12 +430,13 @@ class NaiveFMSearcher(filename:String,bigEndian:Boolean=true) extends SuffixWalk
     bwtstring.c2bs(c)
   }
 
-  def cf(c:Byte):Int = bucketStarts(c)
+  def cf(c:Int):Int = bucketStarts(c)
   val K = bucketStarts.length
-  def occ(c:Byte,key:Int):Int = {
+  def occ(c:Int,key:Int):Int = {
     val istart = bucketStarts(c) 
     var imin = istart
-    var imax = if ( c==K-1 ) n else bucketStarts(c+1)-1
+    var imax = if ( c==K-1 ) n-1 else bucketStarts(c+1)-1
+    
     if (imin <= imax) {
       var found = false
       var imid:Int = 0
@@ -450,8 +475,11 @@ class NaiveFMSearcher(filename:String,bigEndian:Boolean=true) extends SuffixWalk
   def nextSubstr(sp:Int,len:Int):String = {
     var cp = getNextI(sp)
     var ret = new StringBuilder()
-    for ( i <- 0 until len) {
-      ret.append(bwt.read(cp).toChar)
+    var eof:Boolean = false
+    for ( i <- 0 until len if (!eof )) {
+      val b = bwt.read(cp)
+      eof = (b == 0)
+      ret.append(b.toChar)
       cp = getNextI(cp)
     }
     ret.reverse.toString
@@ -585,9 +613,11 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     val tm = System.nanoTime()
     val sa = new SAISBuilder(new ByteArrayNulledOffsetWrapper(t,offset))
     sa.build()
+
     saisLastTime = System.nanoTime() - tm
     saisTotalTime += saisLastTime
-    //sa.printSA()
+    if ( debugLevel >= 4)
+      sa.printSA()
     sa.SA.view.slice(1,sa.SA.length)
   }
 
@@ -1074,7 +1104,9 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       last+=n
 
       val t1v = t1.view.slice(size-n,t1.length)
-      
+      if (debugLevel>=3) {
+        printf("First 10 Bytes of block %s\n",t1v.slice(0,10).mkString(","))
+      }
       val lastSymbol = t1(t1.length-1)
       val occ  = calcOcc(t1v)
       val bs = calcBs (occ)
@@ -1089,7 +1121,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
 
       val gtEof = computeGtEof(t1v,t2,gtTn)
       val (bwt,searcher,rankFirst,rankLast) = calcSAStatistic(t1v,bs,gtEof)
-      
+
       val gaps = time({
         calcGaps(r.reset,searcher,kmpIn,kmpOut,bwt,lastSymbol,first,bs,rankFirst,rankLast)
       },{

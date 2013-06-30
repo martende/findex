@@ -8,24 +8,24 @@ import org.fmindex.re2._
 
 class RE2Parser  extends FunSuite with RandomGenerator {
   test("re2post") {
-    val r = REParser.re2post("abc")
+    val r = REParser.re2poststr("abc")
     assert(r=="ab.c.","r="+r)
   }
   test("re2post2") {
-    val r = REParser.re2post("a(bb)+a")
+    val r = REParser.re2poststr("a(bb)+a")
     assert(r=="abb.+.a.","r="+r)
   }
   test("re2post3") {
-    val r = REParser.re2post("(a|b)")
+    val r = REParser.re2poststr("(a|b)")
     assert(r=="ab|","r="+r)
   }
   test("re2post4") {
-    val r = REParser.re2post("((a|b)*aba*)*(a|b)(a|b)")
+    val r = REParser.re2poststr("((a|b)*aba*)*(a|b)(a|b)")
     
     assert(r=="ab|*a.b.a*.*ab|.ab|.","r="+r)
   }
   test("createNFA") {
-    var nfa = REParser.createNFA("ab.c.")
+    var nfa = REParser.createNFA(REParser.post2re("ab.c."))
     nfa match {
       case REParser.ConstState('a',out) => 
         nfa = out.s
@@ -48,7 +48,7 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   }
   
   test("orNFA") {
-    var nfa = REParser.createNFA("ab|c.")
+    var nfa = REParser.createNFA(REParser.post2re("ab|c."))
 
     var (out1,out2) = nfa match {
       case REParser.SplitState(out1,out2) => 
@@ -85,7 +85,7 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     }
   }
   test("plusNFA") {
-    var out1 = REParser.createNFA("a+")
+    var out1 = REParser.createNFA(REParser.post2re("a+"))
 
 
     var out2 = out1 match {
@@ -114,7 +114,7 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   }
   
   test("starNFA") {
-    var out1 = REParser.createNFA("a*")
+    var out1 = REParser.createNFA(REParser.post2re("a*"))
 
     var (out2,out3) = out1 match {
       case REParser.SplitState(out1,out2) => 
@@ -143,7 +143,7 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   }
 
   test("questionNFA") {
-    var out1 = REParser.createNFA("a?")
+    var out1 = REParser.createNFA(REParser.post2re("a?"))
 
     var (out2,out3) = out1 match {
       case REParser.SplitState(out1,out2) => 
@@ -171,13 +171,13 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   }
 
   test("matchString1") {
-    var re1 = REParser.createNFA("ab.c.")
+    var re1 = REParser.createNFA(REParser.post2re("ab.c."))
     assert(REParser.matchNFA(re1,"abc")==true)
     assert(REParser.matchNFA(re1,"atc")==false)
   }
 
   test("matchString2") {
-    var re1 = REParser.createNFA("am|c.")
+    var re1 = REParser.createNFA(REParser.post2re("am|c."))
     assert(REParser.matchNFA(re1,"ac")==true)
     assert(REParser.matchNFA(re1,"mc")==true)
     assert(REParser.matchNFA(re1,"Xc")==false)
@@ -199,12 +199,20 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     assert(REParser.matchString(re,"bcc")==true)
     assert(REParser.matchString(re,"aaabc")==true)
   }
+  
+  test("punktstring") {
+    var re1 = REParser.createNFA(REParser.re2post(".c"))
+    assert(REParser.matchNFA(re1,"ac")==true)
+    assert(REParser.matchNFA(re1,"mc")==true)
+    assert(REParser.matchNFA(re1,"Xc")==true)
+    assert(REParser.matchNFA(re1,"c")==false)
+  }
 
   test("match SA basics") {
     val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
     sa.build()
     sa.buildOCC
-    var re1 = REParser.createNFA("ma.b.")
+    var re1 = REParser.createNFA(REParser.post2re("ma.b."))
     val results = REParser.matchSA(re1,sa,debugLevel=0)
     assert(results(0).toString == "[2 Results] bam")
   }
@@ -212,7 +220,7 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
     sa.build()
     sa.buildOCC
-    var re1 = REParser.createNFA("ba|c.")
+    var re1 = REParser.createNFA(REParser.post2re("ba|c."))
     val results = REParser.matchSA(re1,sa,debugLevel=0)
     assert(results.toString == "List(ca, [2 Results] cb)")
   }
@@ -284,20 +292,52 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     val sa = new NaiveFMSearcher(fmf.getAbsolutePath)
     //println(sa.bucketStarts.mkString(","))
     //assert(sa.pos2char(10).toChar)
-    var re1 = REParser.createNFA("ba|d|e|c.")
-    val results = REParser.matchSA(re1,sa,debugLevel=2).map{_.toString}.toSet
+    var re1 = REParser.createNFA(REParser.post2re("ba|d|e|c."))
+    val results = REParser.matchSA(re1,sa,debugLevel=0).map{_.toString}.toSet
     assert(results == Set("ec", "dc", "[2 Results] ac", "bc"))
     //assert(results.toString == "List(ca, [2 Results] cb)")
   }
+
+  test("re .*c") {
+    var re1 = REParser.createNFA(REParser.re2post(".*c"))
+    assert(REParser.matchNFA(re1,"ac")==true)
+    assert(REParser.matchNFA(re1,"mc")==true)
+    assert(REParser.matchNFA(re1,"masdasdsda")==false)
+    assert(REParser.matchNFA(re1,"Xcasdasdasdc")==true)
+    assert(REParser.matchNFA(re1,"c")==true)
+  }
+
 }
 
 class RE2Search  extends FunSuite with RandomGenerator {
+  /*
   test("match SA FMindex") {
-    val sa = new NaiveFMSearcher("testdata/include.fm")
+    
+    val r = new FileBWTReader("testdata/test1024.2.txt")
+    val bm = new BWTMerger2(1024,debugLevel=0)
+    val (bwtf,auxf) = bm.merge(r)
 
-    var re1 = REParser.createNFA("ba|d|e|c.")
-    val results = REParser.matchSA(re1,sa,debugLevel=2).map{_.toString}.toSet
-    assert(results == Set("ec", "dc", "[2 Results] ac", "bc"))
+    val fc = new FMCreator(bwtf.getAbsolutePath,1024)
+    val fmf = fc.create()
+    assert(fmf.getAbsolutePath.endsWith("testdata/test1024.2.fm"))
+    
+    val sa = new NaiveFMSearcher("testdata/test1024.2.fm")
+    var re1 = REParser.createNFA(REParser.re2post("DPY.*zf"))
+    val results = REParser.matchSA(re1,sa,debugLevel=1,maxIterations=0).map{_.toString}.toSet
+    println(results)
+
     //assert(results.toString == "List(ca, [2 Results] cb)")
   }
+ */
+
+ test("match SA FMindex") {
+
+    val sa = new NaiveFMSearcher("testdata/include.fm")
+    var re1 = REParser.createNFA(REParser.re2post("renscligt"))
+    val results = REParser.matchSA(re1,sa,debugLevel=2,maxIterations=0).map{_.toString}.toSet
+    println(results)
+    println(sa.nextSubstr(0,1000))
+    //assert(results.toString == "List(ca, [2 Results] cb)")
+  }
+  
 }

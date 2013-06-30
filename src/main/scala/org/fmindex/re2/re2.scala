@@ -4,75 +4,127 @@ import scala.collection.mutable.Stack
 import org.fmindex.SuffixWalkingAlgo
 
 object REParser {
+  val MIN_CHAR=2.toChar
+  val MAX_CHAR=255.toChar
+  class PostPoint
+  class CharPoint(val c:Char) extends PostPoint {
+    override def toString = c.toString
+  }
+  class IntervalPoint(val start:Char,val end:Char) extends PostPoint {
+    override def toString = if (start == MIN_CHAR && end==MAX_CHAR) "." else "[%c-%c]".format(start,end)
+  }
+  class ConcatPoint extends PostPoint {
+    override def toString = "."
+  }
+  class StarPoint extends PostPoint{
+    override def toString = "*"
+  }
+  class QuestionPoint extends PostPoint{
+    override def toString = "?"
+  }
+  class PlusPoint extends PostPoint{
+    override def toString = "+"
+  }
+  class OrPoint extends PostPoint{
+    override def toString = "|"
+  }
+  type PostfixRe = List[PostPoint]
+  def re2post(str:String):PostfixRe = {
+    var i = 0
+    val l = str.length
+    var natom=0
+    var nalt = 0
+    var dst =List[PostPoint]()
+    case class Paren(nalt:Int,natom:Int)
+    val s = Stack[Paren]()
 
-    def re2post(str:String):String = {
-        var i = 0
-        val l = str.length
-        var natom=0
-        var nalt = 0
-        var dst =List[Char]()
-        case class Paren(nalt:Int,natom:Int)
-        val s = Stack[Paren]()
-
-        while ( i< l) {
-            val c = str(i)
-            c match {
-                case '(' => 
-                    if(natom > 1){
-                        natom-=1
-                        dst = '.' :: dst
-                    }
-                    s.push(Paren(nalt,natom))
-                    nalt=0
-                    natom=0
-                case '|' => 
-                    if ( natom == 0) throw new Exception("re2post syntax")
-                    natom-=1
-                    while(natom > 0) {
-                        dst = '.' :: dst
-                        natom-=1
-                    }
-                    nalt+=1
-                case ')' => 
-                    if ( natom == 0) throw new Exception("re2post syntax")
-                    natom-=1
-                    while(natom > 0) {
-                        dst = '.' :: dst
-                        natom-=1
-                    }
-                    while(nalt > 0) {
-                        dst = '|' :: dst
-                        nalt-=1
-                    }
-                    val t = s.pop()
-                    nalt = t.nalt
-                    natom = t.natom+1
-
-                case '*'|'+'|'?' => 
-                    if ( natom == 0) throw new Exception("re2post syntax")
-                    dst = c :: dst
-                case _   => 
-                    if(natom > 1){
-                        natom-=1
-                        dst = '.' :: dst
-                    }
-                    dst = c :: dst
-                    natom+=1
-            }
-            i+=1
-        }
-        if (! s.isEmpty ) throw new Exception("re2post syntax")
-        natom-=1
-        while(natom > 0) {
-            dst = '.' :: dst
+    while ( i< l) {
+      val c = str(i)
+      c match {
+        case '(' =>
+          if(natom > 1){
             natom-=1
-        }
-        while(nalt > 0) {
-            dst = '|' :: dst
+            dst = (new ConcatPoint()) :: dst
+          }
+          s.push(Paren(nalt,natom))
+          nalt=0
+          natom=0
+        case '|' =>
+          if ( natom == 0) throw new Exception("re2post syntax")
+          natom-=1
+          while(natom > 0) {
+            dst = (new ConcatPoint())  :: dst
+            natom-=1
+          }
+          nalt+=1
+        case ')' =>
+          if ( natom == 0) throw new Exception("re2post syntax")
+          natom-=1
+          while(natom > 0) {
+            dst = (new ConcatPoint())  :: dst
+            natom-=1
+          }
+          while(nalt > 0) {
+            dst = (new OrPoint())  :: dst
             nalt-=1
-        }
-        dst.reverse.mkString("")
+          }
+          val t = s.pop()
+          nalt = t.nalt
+          natom = t.natom+1
+
+        case '*'|'+'|'?' =>
+          if ( natom == 0) throw new Exception("re2post syntax")
+          dst::= (c match {
+            case '*' => (new StarPoint())
+            case '+' => (new PlusPoint())
+            case '?' => (new QuestionPoint())
+          }       )
+
+        case _   =>
+          if(natom > 1){
+            natom-=1
+            dst = (new ConcatPoint())  :: dst
+          }
+          dst = (c match {
+            case '.' => new IntervalPoint(MIN_CHAR,MAX_CHAR)
+            case _ =>  new CharPoint(c)
+          } ) :: dst
+          natom+=1
+      }
+      i+=1
     }
+    if (! s.isEmpty ) throw new Exception("re2post syntax")
+    natom-=1
+    while(natom > 0) {
+      dst = (new ConcatPoint())  :: dst
+      natom-=1
+    }
+    while(nalt > 0) {
+      dst = (new OrPoint())  :: dst
+      nalt-=1
+    }
+    dst.reverse
+  }
+
+  def re2poststr(str:String):String = re2post(str).map{_.toString}.mkString("")
+  def post2re(str:String) = {
+    var dst =List[PostPoint]()
+    var i = 0
+    val l = str.length
+    while ( i< l) {
+      val c = str(i)
+      dst::=(c match {
+        case '*' => new StarPoint()
+        case '.' => new ConcatPoint()
+        case '|' => new OrPoint()
+        case '?' => new QuestionPoint()
+        case '+' => new PlusPoint()
+        case _ => new CharPoint(c)
+      })
+      i+=1
+    }
+    dst.reverse
+  }
     
     case class State(c:Int,out:State=null,out1:State=null) {
         def link(s:State):State = State(c,s,null)
@@ -88,9 +140,18 @@ object REParser {
     }
 
     case class ConstState(c:Int,out:LinkState=new LinkState()) extends BaseState {
-        def next = out.s
-        override def links:List[LinkState] = List(out)
-        override def toString = if (c >= 0x20 && c < 0x7f) "ConstState('%c')".format(c) else "ConstState(%d)".format(c) 
+      def next = out.s
+      override def links:List[LinkState] = List(out)
+      override def toString = if (c >= 0x20 && c < 0x7f) "ConstState('%c')".format(c) else "ConstState(%d)".format(c)
+    }
+    case class IntervalState(start:Int,end:Int,out:LinkState=new LinkState()) extends BaseState {
+      def next = out.s
+      override def links:List[LinkState] = List(out)
+      override def toString = if (start.toChar==MIN_CHAR && end == MIN_CHAR) "IntevalState(.)" else
+        "IntervalState('%s-%s')".format(
+          if (start >= 0x20 && start < 0x7f) start.toChar.toString else start.toString,
+          if (end >= 0x20 && end < 0x7f) end.toChar.toString else end.toString
+        )
     }
     case class SplitState(out1:LinkState,out2:LinkState) extends BaseState {
         override def links:List[LinkState] = if ( out2 != null) List(out1,out2) else List(out1)
@@ -103,7 +164,7 @@ object REParser {
         val SPLIT = 256
         val MATCH = 257
     }
-    def createNFA(postfix:String):BaseState = {
+    def createNFA(postfix:PostfixRe):BaseState = {
         val l = postfix.length
         case class Frag(start:State,out:List[State]=List()) {
             def patch(s:State) = {
@@ -129,36 +190,39 @@ object REParser {
             val c = postfix(i)
             //println(c)
             c match {
-                case '?' => 
+                case _:QuestionPoint =>
                     val e = s0.pop
                     val open = new LinkState()
                     val ns = SplitState(new LinkState(e.start),open)
                     s0.push(Frag0(ns,open :: e.out))
-                case '*' => 
+                case _:StarPoint =>
                     val e = s0.pop
                     val open = new LinkState()
                     val ns = SplitState(new LinkState(e.start),open)
                     e.patch(ns)
                     s0.push(Frag0(ns,List(open)))
-                case '+' => 
+                case _:PlusPoint =>
                     val e = s0.pop
                     val open = new LinkState()
                     val ns = SplitState(new LinkState(e.start),open)
                     e.patch(ns)
                     s0.push(Frag0(e.start,List(open)))
-                case '.' =>
+                case _:ConcatPoint =>
                     val e2 = s0.pop
                     val e1 = s0.pop
                     e1.patch(e2.start)
                     s0.push(Frag0(e1.start,e2.out))
-                case '|' =>
+                case _:OrPoint =>
                     val e2 = s0.pop
                     val e1 = s0.pop
                     val ns = SplitState(new LinkState(e1.start),new LinkState(e2.start))
                     s0.push(Frag0(ns,e1.out ::: e2.out))
-                case _ => 
-                    val ns = ConstState(c)
+                case cp:CharPoint =>
+                    val ns = ConstState(cp.c)
                     s0.push(Frag0(ns,ns.links))
+                case cp:IntervalPoint =>
+                  val ns = IntervalState(cp.start,cp.end)
+                  s0.push(Frag0(ns,ns.links))
             }
             //dumpStack
             i+=1
@@ -183,7 +247,7 @@ object REParser {
                 case SplitState(out1,out2) => 
                     val t = addstate(nlist,out1.s)
                     addstate(t,out2.s)
-                case MatchState | ConstState(_,_) => 
+                case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
                     nlist + s
             }
         
@@ -192,8 +256,10 @@ object REParser {
             var i = clist
             while (! i.isEmpty) {
                 i.head match {
-                    case el @ ConstState(x,_) if (c==x ) => 
-                        nlist = addstate(nlist,el.out.s)
+                    case el @ ConstState(x,_) if (c==x ) =>
+                      nlist = addstate(nlist,el.out.s)
+                    case el @ IntervalState(s,e,_) if (c >= s && s <=e) =>
+                      nlist = addstate(nlist,el.out.s)
                     case _ => 
                 }
 
@@ -228,7 +294,7 @@ object REParser {
                 case SplitState(out1,out2) => 
                     val t = liststates(nlist,out1.s)
                     liststates(t,out2.s)
-                case MatchState | ConstState(_,_) => 
+                case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
                     nlist + s
             }
         def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
@@ -238,7 +304,12 @@ object REParser {
                     case Some((sp1,ep1))      => liststates(Set(),el.next).toList.map {StatePoint(len+1,_,sp1,ep1)}
                     case None                 => List()
                 }
-                case _ => ???
+                case el @ IntervalState(start,end,_) => 
+                  val t = sa.getIntervalPrevRange(sp,ep,start,end)
+                  if (t.isEmpty) List() else {
+                    val nextStates = liststates(Set(),el.next).toList
+                    nextStates.map({ s:BaseState => t.map { p:Pair[Int,Int] => StatePoint(len+1,s,p._1,p._2)  } }).flatten
+                  }
             }
         }
     }
@@ -255,7 +326,7 @@ object REParser {
         override def toString = strResult
     }
 
-    def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0) = {
+    def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,maxIterations:Int=0) = {
         def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
         def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
             if ( s == null || nlist(s)) nlist else
@@ -263,7 +334,7 @@ object REParser {
                 case SplitState(out1,out2) => 
                     val t = liststates(nlist,out1.s)
                     liststates(t,out2.s)
-                case MatchState | ConstState(_,_) => 
+                case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
                     nlist + s
             }
         
@@ -279,7 +350,7 @@ object REParser {
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
         
-        while( ! statesFront.isEmpty && i < 10) {
+        while( ! statesFront.isEmpty && (maxIterations == 0 || i < maxIterations ) ) {
             val state = statesFront.head
             statesFront = statesFront.tail
             debug(2,"%2d. Take State=%s",i,state)

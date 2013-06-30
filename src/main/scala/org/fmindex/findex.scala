@@ -9,8 +9,8 @@ import Util._
 trait SuffixAlgo {
   val n:Int
 
-  def cf(c:Byte):Int
-  def occ(c:Byte,i:Int):Int
+  def cf(c:Int):Int
+  def occ(c:Int,i:Int):Int
 
   def search(in:Array[Byte]):Option[(Int,Int)] = {
     var sp = 0
@@ -33,6 +33,22 @@ trait SuffixAlgo {
     var sp1 = cf(c) + occ(c,sp - 1)
     var ep1 = cf(c) + occ(c,ep-1)
     if ( sp1 < ep1 ) Some((sp1,ep1)) else None
+  }
+  def getIntervalPrevRange(sp:Int,ep:Int,cstart:Int,cend:Int):List[(Int,Int)] = {
+    var c = cstart
+    val e:Byte = 1
+    var ret = List[(Int,Int)]()
+    while ( c <= cend ) {
+      val occ1 = occ(c,sp - 1)
+      val occ2 = occ(c,ep-1)
+      if ( occ1 < occ2 ) {
+        val p = (cf(c) + occ1,cf(c) + occ2)
+        ret ::= p
+      }
+      c += 1
+    }
+    ret
+    
   }
 }
 
@@ -57,8 +73,14 @@ trait BWTDebugging[T] {
     }
     for ( i <- 0 until n) {
       //if ( ! lmsOnly || isLMS(SA(i))) {
-      if ( filter(SA(i)))
-        printf("%2d -> %2d.\t%s\n",i,SA(i),stringLike(i))
+      if ( filter(SA(i))) {
+        var strelem = stringLike(i)
+        if (strelem.length > 40 ) {
+          strelem = strelem.substring(0,10) + "..." + strelem.substring(strelem.length-10,strelem.length) 
+        }
+        printf("%2d -> %2d.\t%s\n",i,SA(i),strelem.map(c => if ( c < 0x20) '_' else c ))
+      }
+        
     }
   }
 
@@ -388,8 +410,8 @@ class ByteArrayNulledOffsetWrapper(_s:Array[Byte],offset:Int) extends ArrayWrapp
 trait NaiveSearcher extends SuffixWalkingAlgo {
   this: SAISAlgo[Byte] =>
   var OCC:Array[Int] = _
-  def cf(c:Byte):Int = bucketStarts(c)
-  def occ(c:Byte,key:Int):Int = {
+  def cf(c:Int):Int = bucketStarts(c)
+  def occ(c:Int,key:Int):Int = {
     assert(SA(0)>=0,"Suffix Array not built")
     if ( OCC == null) buildOCC
     val istart = bucketStarts(c) 
@@ -448,8 +470,8 @@ class NaiveBWTSearcher(bwt:Array[Byte],bucketStarts:Array[Long],rk0:Int) extends
     }
     oct
   }
-  def cf(c:Byte):Int = bucketStarts(c).toInt
-  def occ(c:Byte,key:Int):Int = {
+  def cf(c:Int):Int = bucketStarts(c).toInt
+  def occ(c:Int,key:Int):Int = {
     val ci = c & 0xff
     val istart = bucketStarts(ci).toInt
     var imin = istart
@@ -674,3 +696,4 @@ if (saisxx(s.begin(), sa.begin(), (int)s.size(), 0x100) == -1) {
         //for((x,i) <- xs.view.zipWithIndex) println("String #" + i + " is " + x)
     }
 }
+ 
