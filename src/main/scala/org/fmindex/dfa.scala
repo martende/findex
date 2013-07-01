@@ -389,8 +389,6 @@ object DFA {
         println("unhandledStates1",unhandledStates)
         println("unhandledStates2",summts.keySet map {_._1 })
         */
-        
-
         psc(sumts, rest enqueue unhandledStates)
       }
     }

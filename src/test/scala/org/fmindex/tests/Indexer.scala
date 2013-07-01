@@ -890,6 +890,7 @@ class BWTCreatorTest extends FunSuite {
 }
 
 class DirBWTReaderTest extends FunSuite {
+/*
   test("DirBWTReader testdata/") {
     val r = new DirBWTReader("testdata/t1",debugLevel=0)
     var c = r.getByte
@@ -902,25 +903,29 @@ class DirBWTReaderTest extends FunSuite {
     
     assert(n==3073,"n != 3073 but %d".format(n))   
   }
+*/
+  /*
   test("DirBWTReader testdata/t2") {
-    val r0 = new DirBWTReader("testdata/t2","testdata/t2-dir",debugLevel=0)
-    val t=new Array[Byte](1024*10)
-    val n = r0.copyReverse(t)
-    println("REVERSED COPY")
-    println(t.reverse.map{_.toChar}.view.slice(0,n).mkString(""))
-
-    val r = new DirBWTReader("testdata/t2","testdata/t2-dir",debugLevel=0)
-    val bm = new BWTMerger2(1024*1024*1,debugLevel=4)
-    val (of,af) = bm.merge(r)
-    val fm = new FMCreator("testdata/t2-dir.bwt",1024*1024)
-    fm.create()
-    val bwtl = new BWTLoader(new File("testdata/t2-dir.bwt"))
-    println(bwtl.eof.toInt)
-    val sa = new NaiveFMSearcher("testdata/include.fm")
-    println("------------------------")
-    println(sa.nextSubstr(sa.getNextI(bwtl.eof.toInt),100))
-
+    val r = new DirBWTReader("/usr/include",debugLevel=0)
+    val size = 1024
+    var tot = 0
+    for ( i <- 0 until 300) {
+      printf("i=%d\n",i)
+      val t1:Array[Byte] = new Array[Byte](size)
+      val n = r.copyReverse(t1) 
+      val t1v = t1.view.slice(size-n,t1.length).reverse
+      val rr = r.reset
+      for ( j <- 0 until tot) {
+        rr.getByte
+      }
+      for ( j <- 0 until n) {
+        assert(rr.getByte==t1v(j))
+      }
+      println("------------------")
+      tot = tot + n
+    }
   }
+  */
 }
 
 class UtilTest extends FunSuite {
@@ -975,4 +980,55 @@ class MergerTest2 extends FunSuite {
     val gt = kmpIn.readBit()
   }
   
+}
+
+
+class CombinedIndexingTest extends FunSuite {
+  test ("test1024.txt") {
+    val dir = "testdata/test1024.txt"
+    var selfTest:Boolean = true
+    var createFM = true
+    val i = 1
+    import java.io.File
+
+    val r = if ( (new File(dir)).isDirectory ) 
+        new DirBWTReader(dir,"testdata/include",debugLevel=0,caching=true) else 
+        new FileBWTReader(dir)
+    
+    val bm = new BWTMerger2(1024*i,debugLevel=0)
+    val (of,af) = bm.merge(r)
+
+    if ( createFM ) {
+        val fm = new FMCreator(of.getAbsolutePath,1024*1024*i)
+        fm.create()        
+    }
+
+    if ( selfTest ) {
+        val bwtl = new BWTLoader(of)
+        assert(bwtl.eof.toInt == 462,"BWT Eof=%d realvalue - 462\n".format(bwtl.eof.toInt))
+
+        val sa = new NaiveFMSearcher(of.getAbsolutePath)
+        assert(bwtl.read(0).toChar == 'u')
+        assert(bwtl.read(1).toChar == 'b')
+        assert(bwtl.read(2).toChar == 'x')
+        assert(bwtl.read(bwtl.eof.toInt) == 0)
+        assert(sa.getPrevI(bwtl.eof.toInt) == 0)
+        assert(bwtl.read(sa.getPrevI(bwtl.eof.toInt)).toChar == 'u' ) // First in file
+        assert(sa.getNextI(bwtl.eof.toInt)==517)
+
+        assert(bwtl.read(sa.getNextI(bwtl.eof.toInt)).toChar=='l') // Last in file
+
+        assert(sa.getPrevI(1)==48)
+        assert(sa.getPrevI(48) == 649)
+        assert(sa.nextSubstr(1,3)=="haa")
+        assert(bwtl.read(1000).toChar=='b')
+        assert(sa.nextSubstr(sa.getNextI(bwtl.eof.toInt),100)=="zajrtzbeqwbxdfpwjflmmsseewuudgfbtzqenjqafwzcnfanycigwsflfvxojxpqhhzekjdkhgsptqveavquuoqujbezdkarayom")
+        assert(sa.nextSubstr(bwtl.eof.toInt,100)=="ajrtzbeqwbxdfpwjflmmsseewuudgfbtzqenjqafwzcnfanycigwsflfvxojxpqhhzekjdkhgsptqveavquuoqujbezdkarayoml")
+        assert(sa.prevSubstr(1,5)=="bqxxa")
+        assert(sa.prevSubstr(bwtl.eof.toInt,5)=="\0uexm") // StartFile + \0
+        assert(sa.prevSubstr(sa.getPrevI(bwtl.eof.toInt),4)=="uexm")
+    }
+
+  }
+
 }

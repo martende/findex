@@ -54,6 +54,7 @@ trait SuffixAlgo {
 
 trait SuffixWalkingAlgo extends SuffixAlgo {
   def nextSubstr(i:Int,len:Int):String
+  def prevSubstr(sp:Int,len:Int):String
 }
 
 trait BWTDebugging[T] {

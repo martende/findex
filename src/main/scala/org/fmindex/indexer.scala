@@ -44,14 +44,78 @@ object FMCreatorApp  {
     }
 }
 
-object IndexerApp extends optional.Application {
-  def main(dir: String = "/usr/include/",i:Int=10) {
-    val r = new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true)
+object IndexerApp {
+  def main(args: Array[String]) {
+    var selfTest:Boolean = true
+    var createFM = true
+    var maxSize  = 1024*210
+    var dir:String = "/usr/include/";
+    var i:Int = 10
+    var mergeDebugLevel:Int=1
+    import java.io.File
+
+    def process(args: List[String]) :Boolean = {
+        args match {
+            case Nil => true
+            case "--dir"         :: x :: rest => dir = x ; process(rest)
+            case "-i"            :: x :: rest => i = x.toInt ; process(rest)
+            case "--max-size"    :: x :: rest => maxSize = 1024*x.toInt ; process(rest)
+            case "--merge-debug-level"    :: x :: rest => mergeDebugLevel = x.toInt ; process(rest)
+            case _ => false
+        }
+
+    }
+
+    process(args.toList)
+
+    val r = if ( (new File(dir)).isDirectory ) 
+        new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true,maxSize=maxSize) else 
+        new FileBWTReader(dir,maxSize=maxSize)
     
-    //val r = new FileBWTReader("testdata/include.cache")
-    
-    //val r = new DirBWTReader("/data_nb/aleh/MProg/findex/src","testdata/include",debugLevel=0,caching=true)
-    val bm = new BWTMerger2(1024*1024*i,debugLevel=2)
+    val bm = new BWTMerger2(1024*i,debugLevel=mergeDebugLevel)
     val (of,af) = bm.merge(r)
+
+    if ( createFM ) {
+        println("Create FM index")
+        val fm = new FMCreator(of.getAbsolutePath,1024*1024*i)
+        fm.create()        
+    }
+
+    if ( selfTest ) {
+        println("Selfchecking tests")
+        val bwtl = new BWTLoader(of)
+        val bwtl2= new BWTLoader(new File("testdata/include.cache.bwt"),bigEndian=false)
+        printf("BWT Eof=%d\n",bwtl.eof.toInt)
+        printf("BWT Eof2=%d\n",bwtl2.eof.toInt)
+
+        val sa = new NaiveFMSearcher(of.getAbsolutePath)
+        println("------------------------")
+        /*
+        println("BWT(0)",bwtl.read(0).toChar)
+        println("BWT(1)",bwtl.read(1).toChar)
+        println("BWT(2)",bwtl.read(2).toChar)
+        println("BWT(EOF)",bwtl.read(bwtl.eof.toInt))
+        println("*BWT(EOF--)",sa.getPrevI(bwtl.eof.toInt))
+        println("BWT(EOF--)",bwtl.read(sa.getPrevI(bwtl.eof.toInt)).toChar)
+        println("*BWT(EOF++)",sa.getNextI(bwtl.eof.toInt))
+        println("BWT(EOF++)",bwtl.read(sa.getNextI(bwtl.eof.toInt)).toChar)
+
+        println("sa.getPrevI(1)",sa.getPrevI(1))
+        println("sa.getPrevI(48)",sa.getPrevI(48))
+        println("sa.nextSubstr(1,3)",sa.nextSubstr(1,3))
+        println("BWT(1000)",bwtl.read(1000).toChar)
+        println("EOF++",sa.getNextI(bwtl.eof.toInt),sa.nextSubstr(sa.getNextI(bwtl.eof.toInt),100))
+        println("EOF--",sa.getPrevI(bwtl.eof.toInt),sa.nextSubstr(sa.getPrevI(sa.getPrevI(bwtl.eof.toInt)),100))
+        println("EOF",bwtl.eof.toInt,sa.nextSubstr(bwtl.eof.toInt,100))
+        */
+        def safeStr(s:String) = s.map{c:Char => if ( c < 0x20 ) '_' else c }
+
+        println("First String:")
+        val s = sa.prevSubstr(bwtl.eof.toInt,100)
+        println(s)
+        println(s == "\0GFORTRAN module version '6' created from ../../../../fortran/src/H5Pff.f90 on Wed Dec  7 15:28:19 2")
+        
+    }
+    println("Done")
   }
 }
