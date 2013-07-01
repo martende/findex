@@ -6,240 +6,6 @@ import java.io.File
 import org.apache.commons.io.FilenameUtils
 import scala.collection.mutable.BitSet
 
-trait IBWTReader {
-  def copyReverse(t:Array[Byte]):Int
-  def getByte:Int
-  def isEmpty:Boolean
-  var pos:Int = 0
-  def close
-  def reset:IBWTReader 
-  val filename:String = "IBWTReader"
-}
-
-class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,caching:Boolean=false,maxSize:Int = 0 ) extends IBWTReader {
-  def reset:IBWTReader = if ( caching ) {
-    cacheoutb.flush()
-    new FileBWTReader(cachefile)
-  }
-    else new DirBWTReader(_dir,_filename)
-  override val filename:String = _filename
-  val mainDir = new File(_dir)
-  if ( ! mainDir.isDirectory ) throw new Exception("mainDir %s is not directory".format(mainDir))
-
-  val files = recursiveListFiles(mainDir)
-  var filesStream = files
-  var bytesCache:List[Byte] = List()
-  var readCount:Int = 0
-  //var in:java.io.FileInputStream = _
-  var inb:java.io.BufferedInputStream = _ // new java.io.BufferedInputStream(in)
-
-  val cachefile = BWTTempStorage.genCacheFilename(_filename)
-  var cacheoutb:java.io.BufferedOutputStream = if (caching) {
-      val cacheout = new java.io.FileOutputStream(cachefile)
-      new java.io.BufferedOutputStream(cacheout)
-  } else null
-  
-  var lastByte:Int = _readByte(filesStream,null)
-  def isEmpty = ( lastByte == -1 )
-  def debug(l:Int,s: =>String  ) = if (l<=debugLevel) println(s)
-  def recursiveListFiles(f: File): Stream[File] = {
-    def isBinary(f:File) = Util.isBinary(f) match  {
-      case Some(true) => 
-        debug(2,"DirBWTReader: read file '%s' File Is Binary".format(f))
-        true
-      case Some(false) => false
-      case None => true
-    }
-
-    if (! f.isDirectory ) {
-        Stream(f)
-    } else {
-        val these = f.listFiles
-        if ( these == null )
-            Stream.empty
-        else
-            these.filter{ x:File => ! x.isDirectory && ! isBinary(x) }.toStream append these.filter{x:File => x.isDirectory }.flatMap(recursiveListFiles)
-    }
-  }
-  def getByte = {
-    val b = lastByte
-    lastByte = if ( b != -1 ) {
-      pos+=1
-      _readByte(filesStream,inb) 
-    } else -1 
-    b
-  }
-  def copyReverse(t:Array[Byte]):Int = {
-    var i = t.length -1 
-    var b = 0
-    t(i) = lastByte.toByte
-    i-=1
-    while ( i >= 0 && b != -1 ) {
-      b = _readByte(filesStream,inb)
-      if ( b > 0) {
-        t(i) = b.toByte
-        pos+=1
-        i-=1
-      }
-    }
-    lastByte = if ( b != -1 ) _readByte(filesStream,inb) else -1 
-    t.length - i - 1 
-  }
-
-
-  def _readByte(fStream:Stream[File],_inb:java.io.BufferedInputStream):Int = {
-    if (maxSize > 0 && readCount>=maxSize) {
-      -1
-    } else if (bytesCache.isEmpty) {
-      if ( _inb == null ) {
-        if ( fStream.isEmpty ) {
-          if ( inb != null ) inb.close()
-          inb = null
-          filesStream = fStream
-          -1 
-        }
-        else {
-          debug(3,"DirBWTReader: read file '%s' total %d bytes".format(fStream.head,readCount))
-          val opNewIs = try {
-            val in = new java.io.FileInputStream(fStream.head)
-            Some(new java.io.BufferedInputStream(in))
-          } catch {
-            case _:java.io.FileNotFoundException  => {
-              debug(2,"DirBWTReader: read file '%s' File Not Found".format(fStream.head))
-              None
-            }
-          } 
-          opNewIs match {
-            case Some(newIs) => _readByte(fStream.tail,newIs)
-            case None        => _readByte(fStream.tail,null)
-          }
-          
-        }
-      } else {
-        val b = _inb.read()
-        if ( b == -1 ) {
-          val nb = _readByte(fStream,null).toByte
-          bytesCache::=nb
-          if (caching) {
-            cacheoutb.write('@')
-            if (nb != -1) cacheoutb.write(b)
-          }
-          readCount+=1
-          '@'
-        } else {
-          readCount+=1
-          if (inb != _inb ) {
-            if ( inb != null) inb.close()
-            inb = _inb
-            filesStream = fStream
-          }
-          if ( b == 0) {
-            bytesCache::='0'
-            if (caching) {
-              cacheoutb.write('\\')
-              cacheoutb.write('0')
-            }
-            '\\'
-          } else if ( b == 255 ) {
-            println("AAAAAAAAAAAAAAAA")
-            bytesCache::='f'
-            if (caching) {
-              cacheoutb.write('\\')
-              cacheoutb.write('f')
-            }
-            '\\'
-          } else {
-            if (caching) cacheoutb.write(b)
-            b
-          }
-        }
-      }  
-    } else {
-      val b = bytesCache.head
-      bytesCache=bytesCache.tail
-      b
-    }
-    
-  }
-
-  def close {
-    if ( inb != null) {
-      inb.close
-      inb=null
-    }
-    if ( cacheoutb != null ) {
-      cacheoutb.close
-      cacheoutb = null
-    }
-    filesStream = Stream.Empty
-  }
-}
-
-class FileBWTReader(_filename:String,maxSize:Int=0) extends IBWTReader {
-  override val filename = _filename
-  val f = new File(filename)
-  val in = new java.io.FileInputStream(f)
-  val inb = new java.io.BufferedInputStream(in)
-  var lastByte:Int = inb.read()
-  def isEmpty = ( lastByte == -1 )
-
-  def reset:IBWTReader = new FileBWTReader(_filename,maxSize)
-  def getByte = {
-    if (maxSize > 0 && pos>=maxSize) {
-      -1
-    } else {
-      val b = lastByte
-      lastByte = if ( b != -1 ) {
-        pos+=1
-        inb.read() 
-      } else -1 
-      b
-    }
-  }
-  def copyReverse(t:Array[Byte]):Int = {
-    var i = t.length -1 
-    var b = 0
-    t(i) = lastByte.toByte
-    i-=1
-    while ( i >= 0 && b != -1 ) {
-      b = if (maxSize > 0 && pos>=maxSize) -1 else inb.read()
-      if ( b > 0) {
-        t(i) = b.toByte
-        pos+=1
-        i-=1
-      }
-    }
-    lastByte = if ( b != -1 ) inb.read() else -1 
-    t.length - i - 1 
-  }
-  def close {
-    inb.close()
-    in.close()
-  }
-}
-
-
-class StringBWTReader(_b:Array[Byte]) extends IBWTReader {
-  val b:Array[Byte] = _b
-  def copyReverse(t:Array[Byte]):Int = {
-    var i = t.length -1 
-    while ( i >= 0 && pos < b.length ) {
-      t(i) = b(pos)
-      pos+=1
-      i-=1
-    }
-    t.length - i - 1 
-  }
-  def getByte = {
-    val cb = b(pos)
-    pos+=1
-    cb
-  }
-  def isEmpty:Boolean = pos == b.length
-  def close {}
-  def reset:IBWTReader = new StringBWTReader(_b)
-}
-
 object BWTTempStorage {
   def genTmpFilename(s:String) = {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
@@ -481,7 +247,7 @@ class NaiveFMSearcher(filename:String,bigEndian:Boolean=true) extends SuffixWalk
     i
   }
   def getPrevI(i:Int) = {
-    val c = bwt.read(i).toByte
+    val c = bwt.read(i)
     cf(c) + occ(c,i - 1)
   }
   def getNextI(i:Int) = {
@@ -644,7 +410,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
 
     saisLastTime = System.nanoTime() - tm
     saisTotalTime += saisLastTime
-    if ( debugLevel >= 4)
+    if ( debugLevel >= 5)
       sa.printSA()
     sa.SA.view.slice(1,sa.SA.length)
   }
@@ -692,7 +458,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       val n_1 = n -1 
       val newt = new Array[Int](n+1)
       while ( i < n ) {
-        val c = if ( i == n - 1 ) t(i)+1 
+        val c = if ( i == n - 1 ) (t(i)&0xff)+1 
           else if ( ( t(i) & 0xff )< ( t(n_1) & 0xff) || ( t(i) == t(n_1) && ! gtEof(i+1) ) ) (t(i)&0xff)
           else (t(i)&0xff)+2
         newt(i) = map(c)
@@ -957,7 +723,7 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     val gaps = new Array[Int](n+1)
     val pfxBuffer = new Array[Byte](KMPBuffer.PFX_BUFFER_SIZE)
     var c = r.getByte.toByte
-    var curRank = bucketStarts(c).toInt
+    var curRank = bucketStarts(c&0xff).toInt
     pfxBuffer(0) = c
     gaps(0)+=1
     gaps(curRank)+=1
@@ -1087,6 +853,16 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
     var last:Long = n
     val sa = calcSA(t1,t1.length-n)
     val t1slice = t1.view.slice(size-n,t1.length)
+    if ( debugLevel >=4 ) {
+      println("------------------------------------")
+      println(t1slice.reverse.map{_.toChar}.mkString(""))
+      /*
+      println("------------------------------------")
+      println(t1slice.reverse.mkString(","))
+      */
+      println("------------------------------------")
+    }
+
     val occGlobal = calcOcc(t1slice)
     val newRank0 = sa.indexOf(0)
     var bwtTs = new BWTTempStorage(r.filename,n+1,newRank0+1)
@@ -1144,7 +920,14 @@ class BWTMerger2(size:Int,debugLevel:Int=0) {
       last+=n
 
       val t1v = t1.view.slice(size-n,t1.length)
-      
+      if ( debugLevel >=4 ) {
+        println("------------------------------------")
+        println(t1v.reverse.map{_.toChar}.mkString(""))
+        /*println("------------------------------------")
+        println(t1v.reverse.mkString(","))
+        */
+        println("------------------------------------")
+      }
       val lastSymbol = t1(t1.length-1)
       val occ  = calcOcc(t1v)
       val bs = calcBs (occ)

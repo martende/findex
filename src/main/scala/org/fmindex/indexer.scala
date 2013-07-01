@@ -48,9 +48,10 @@ object IndexerApp {
   def main(args: Array[String]) {
     var selfTest:Boolean = true
     var createFM = true
-    var maxSize  = 1024*210
+    var maxSize  = 0
     var dir:String = "/usr/include/";
     var i:Int = 10
+    var filterBinary = true
     var mergeDebugLevel:Int=1
     import java.io.File
 
@@ -61,6 +62,7 @@ object IndexerApp {
             case "-i"            :: x :: rest => i = x.toInt ; process(rest)
             case "--max-size"    :: x :: rest => maxSize = 1024*x.toInt ; process(rest)
             case "--merge-debug-level"    :: x :: rest => mergeDebugLevel = x.toInt ; process(rest)
+            case "--no-filter-binary" :: rest => filterBinary = false ; process(rest)
             case _ => false
         }
 
@@ -69,24 +71,24 @@ object IndexerApp {
     process(args.toList)
 
     val r = if ( (new File(dir)).isDirectory ) 
-        new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true,maxSize=maxSize) else 
+        new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true,maxSize=maxSize,filterBinary=filterBinary) else 
         new FileBWTReader(dir,maxSize=maxSize)
     
-    val bm = new BWTMerger2(1024*i,debugLevel=mergeDebugLevel)
+    val bm = new BWTMerger2(1024*1024*i,debugLevel=mergeDebugLevel)
     val (of,af) = bm.merge(r)
 
     if ( createFM ) {
         println("Create FM index")
-        val fm = new FMCreator(of.getAbsolutePath,1024*1024*i)
+        val fm = new FMCreator(of.getAbsolutePath,1024*1024*10)
         fm.create()        
     }
 
     if ( selfTest ) {
         println("Selfchecking tests")
         val bwtl = new BWTLoader(of)
-        val bwtl2= new BWTLoader(new File("testdata/include.cache.bwt"),bigEndian=false)
+        //val bwtl2= new BWTLoader(new File("testdata/include.cache.bwt"),bigEndian=false)
         printf("BWT Eof=%d\n",bwtl.eof.toInt)
-        printf("BWT Eof2=%d\n",bwtl2.eof.toInt)
+        //printf("BWT Eof2=%d\n",bwtl2.eof.toInt)
 
         val sa = new NaiveFMSearcher(of.getAbsolutePath)
         println("------------------------")

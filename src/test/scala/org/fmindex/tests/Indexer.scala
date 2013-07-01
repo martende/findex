@@ -672,6 +672,16 @@ class MergerTest extends FunSuite {
       assert(asize == 7)
     }
 
+    test("BWTMerger2.remapAlphabet2") {
+      val bm = new BWTMerger2(1024)
+      val (remapped,asize) = bm.remapAlphabet(
+        Array[Byte](64,112,104,101,110,111,117,118,108,98,111,107,107,119,117,104,112,110,111,97,102,101,97,99,101,110,106,98,101,103,103,97,106,100,105,115,98,100,100,120,106,110,106,117,118,98,111,122,101,120,119,114,107,99,98,118,116,107,110,113,107,101,105,118,122,110,107,115,101,106,122,100,102,117,106,98,109,115,101,106,103,102,109,122,101,99,114,119,102,-1,103,97,105,115,116,110,116,112,98,113,99,99,109,109,110,119,113,109,115,121,110,103,119,106,109,122,98,103,106,108,110,113,122,107,102,-1,120,119,102,113,98,109,99,115,102,-1),
+        BitSet(1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17,18,20,21,23,24,25,26,28,29,30,32,33,34,35,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,92,93,94,95,96,97,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,117,118,119,120,121,122,123,124,125,126,127,128,129,131,132,133,134,135)
+      )
+      assert(asize==30)
+      assert(remapped.mkString(",")=="1,17,9,6,15,16,22,23,13,3,16,12,12,24,22,9,17,15,16,2,7,6,2,4,6,15,11,3,6,8,8,2,11,5,10,20,3,5,5,25,11,15,11,22,23,3,16,27,6,25,24,19,12,4,3,23,21,12,15,18,12,6,10,23,27,15,12,20,6,11,27,5,7,22,11,3,14,20,6,11,8,7,14,27,6,4,19,24,7,29,8,2,10,20,21,15,21,17,3,18,4,4,14,14,15,24,18,14,20,26,15,8,24,11,14,27,3,8,11,13,15,18,27,12,7,29,25,24,7,18,3,14,4,20,7,28,0")
+    }
+
     test("BWTMerger2 test2048 occ searcher") {
       val r = new FileBWTReader("testdata/test2048.txt")
       val bm = new BWTMerger2(1024)      
@@ -890,7 +900,7 @@ class BWTCreatorTest extends FunSuite {
 }
 
 class DirBWTReaderTest extends FunSuite {
-/*
+  /*
   test("DirBWTReader testdata/") {
     val r = new DirBWTReader("testdata/t1",debugLevel=0)
     var c = r.getByte
@@ -903,13 +913,20 @@ class DirBWTReaderTest extends FunSuite {
     
     assert(n==3073,"n != 3073 but %d".format(n))   
   }
-*/
+  */
   /*
-  test("DirBWTReader testdata/t2") {
-    val r = new DirBWTReader("/usr/include",debugLevel=0)
+  test("DirBWTReader testdata/tbad") {
+    val r = new DirBWTReader("testdata/tbad",debugLevel=0)
+    var c = r.getByte
+    
+  }
+  */
+  /*
+  test("DirBWTReader testdata/tbad") {
+    val r = new DirBWTReader("testdata/tbad",debugLevel=0)
     val size = 1024
     var tot = 0
-    for ( i <- 0 until 300) {
+    for ( i <- 0 until 3) {
       printf("i=%d\n",i)
       val t1:Array[Byte] = new Array[Byte](size)
       val n = r.copyReverse(t1) 
@@ -982,6 +999,10 @@ class MergerTest2 extends FunSuite {
   
 }
 
+class BadTest extends FunSuite {
+
+
+}
 
 class CombinedIndexingTest extends FunSuite {
   test ("test1024.txt") {
