@@ -132,7 +132,7 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
         if ( b == -1 ) {
           val nb = __readByte(fStream,null)
           if (nb != -1) bytesCache::=nb
-          '@'
+          1 // File Splitter 
         } else {
           if (inb != _inb ) {
             if ( inb != null) inb.close()
@@ -143,6 +143,9 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
           b match {
             case 0 => 
               bytesCache::='0'
+              '\\'
+            case 1 => 
+              bytesCache::='1'
               '\\'
             case 255 => 
               bytesCache::='f'

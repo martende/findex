@@ -9,6 +9,13 @@ object Util {
     println("Total Memory:" + runtime.totalMemory() / MB)
     println("Max Memory:" + runtime.maxMemory() / MB)
   }
+  def timer[R](block: => R,evaled:Long => Unit): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    evaled(t1-t0)
+    result
+  }
 
   def isBinary(f:java.io.File):Option[Boolean] = {
     var in:java.io.FileInputStream = null

@@ -48,7 +48,6 @@ trait SuffixAlgo {
       c += 1
     }
     ret
-    
   }
 }
 
