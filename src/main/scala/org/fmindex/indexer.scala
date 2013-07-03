@@ -53,12 +53,15 @@ object IndexerApp {
     var i:Int = 10
     var filterBinary = true
     var mergeDebugLevel:Int=1
+    var cacheFile ="testdata/cache"
+
     import java.io.File
 
     def process(args: List[String]) :Boolean = {
         args match {
             case Nil => true
             case "--dir"         :: x :: rest => dir = x ; process(rest)
+	    case "--cache-file"	 :: x :: rest => cacheFile = x ; process(rest)
             case "-i"            :: x :: rest => i = x.toInt ; process(rest)
             case "--max-size"    :: x :: rest => maxSize = 1024*x.toInt ; process(rest)
             case "--merge-debug-level"    :: x :: rest => mergeDebugLevel = x.toInt ; process(rest)
@@ -71,7 +74,7 @@ object IndexerApp {
     process(args.toList)
 
     val r = if ( (new File(dir)).isDirectory ) 
-        new DirBWTReader(dir,"testdata/include",debugLevel=2,caching=true,maxSize=maxSize,filterBinary=filterBinary) else 
+        new DirBWTReader(dir,cacheFile,debugLevel=0,caching=true,maxSize=maxSize,filterBinary=filterBinary) else 
         new FileBWTReader(dir,maxSize=maxSize)
     
     val bm = new BWTMerger2(1024*1024*i,debugLevel=mergeDebugLevel)

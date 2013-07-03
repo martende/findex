@@ -288,30 +288,35 @@ object REParser {
 
       
     case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) {
-        def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
-            if ( s == null || nlist(s)) nlist else
-            s match {
-                case SplitState(out1,out2) => 
-                    val t = liststates(nlist,out1.s)
-                    liststates(t,out2.s)
-                case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
-                    nlist + s
-            }
-        def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
-            var ret = List()
-            state match {
-                case el @ ConstState(chr1,_)  => sa.getPrevRange(sp,ep,chr1.toByte) match {
-                    case Some((sp1,ep1))      => liststates(Set(),el.next).toList.map {StatePoint(len+1,_,sp1,ep1)}
-                    case None                 => List()
+      def overlaps(that: StatePoint) = {
+        val i0 = (this.sp max that.sp) // lower bound of intersection interval
+        val i1 = (this.ep min that.ep) // upper bound of intersection interval
+        (i0 <= i1)
+      }
+      def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
+          if ( s == null || nlist(s)) nlist else
+          s match {
+              case SplitState(out1,out2) => 
+                  val t = liststates(nlist,out1.s)
+                  liststates(t,out2.s)
+              case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
+                  nlist + s
+          }
+      def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
+          var ret = List()
+          state match {
+              case el @ ConstState(chr1,_)  => sa.getPrevRange(sp,ep,chr1.toByte) match {
+                  case Some((sp1,ep1))      => liststates(Set(),el.next).toList.map {StatePoint(len+1,_,sp1,ep1)}
+                  case None                 => List()
+              }
+              case el @ IntervalState(start,end,_) => 
+                val t = sa.getIntervalPrevRange(sp,ep,start,end)
+                if (t.isEmpty) List() else {
+                  val nextStates = liststates(Set(),el.next).toList
+                  nextStates.map({ s:BaseState => t.map { p:Pair[Int,Int] => StatePoint(len+1,s,p._1,p._2)  } }).flatten
                 }
-                case el @ IntervalState(start,end,_) => 
-                  val t = sa.getIntervalPrevRange(sp,ep,start,end)
-                  if (t.isEmpty) List() else {
-                    val nextStates = liststates(Set(),el.next).toList
-                    nextStates.map({ s:BaseState => t.map { p:Pair[Int,Int] => StatePoint(len+1,s,p._1,p._2)  } }).flatten
-                  }
-            }
-        }
+          }
+      }
     }
     
     case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
@@ -326,7 +331,7 @@ object REParser {
         override def toString = strResult
     }
 
-    def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,maxIterations:Int=0) = {
+    def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
         def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
         def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
             if ( s == null || nlist(s)) nlist else
@@ -349,21 +354,31 @@ object REParser {
         debug(2,"Start statesFrom %s",statesFront)
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
-        
+        def debugOverlapCheck(s:StatePoint,sf:List[StatePoint]) = sf.find({
+          ss:StatePoint => s.state == ss.state && (s overlaps ss)
+        })
+          
         while( ! statesFront.isEmpty && (maxIterations == 0 || i < maxIterations ) ) {
             val state = statesFront.head
             statesFront = statesFront.tail
-            debug(2,"%2d. Take State=%s",i,state)
             val newStates = state.expand(sa)
-            debug(2,"newStates %s",newStates)
+            debug(2,"%2d. Take State=%s and create newStates %s",i,state,newStates)
+
             newStates.foreach {
                 s:StatePoint=> s.state match {
                     case MatchState => 
-                    results::=SAResult(sa,s.len,s.sp,s.ep)
-                    case _ => statesFront ::= s
+                      results::=SAResult(sa,s.len,s.sp,s.ep)
+                    case _ if maxLength == 0 || s.len < maxLength => 
+                      debugOverlapCheck(s,statesFront) match {
+                        case Some(sp) => printf("%s OVERLAPPS %s !\n",s,sp)
+                        case _        => 
+                      }
+                      
+                      statesFront ::= s
+                    case _ => 
                 }
             }
-            debug(2,"statesFront %s",statesFront)
+            //debug(2,"statesFront %s",statesFront)
             /*
             if (/*newStates.isEmpty && */finishStates(state.state)) {
                 results=SAResult(sa,state.len,state.sp,state.ep)::results
