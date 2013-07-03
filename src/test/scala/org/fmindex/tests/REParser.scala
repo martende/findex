@@ -332,7 +332,13 @@ class RE2Search  extends FunSuite with RandomGenerator {
 
  test("match SA FMindex") {
   import Util._
-    val sa = new NaiveFMSearcher("testdata/linux.fm")
+
+    val sa = try {
+      new NaiveFMSearcher("testdata/linux.fm")
+      } catch {
+        case e:Exception => 
+          new NaiveFMSearcher("testdata/include.fm")
+      }
     
     def re(s:String,maxIterations:Int=0,maxLength:Int=0,debugLevel:Int=0) = {
       val re1 = REParser.createNFA(REParser.re2post(s))
@@ -350,7 +356,13 @@ class RE2Search  extends FunSuite with RandomGenerator {
     re("stdio.h")
     re("main")
     */
-    re("a.*b",maxIterations=300,maxLength=10,debugLevel=2)
+    /*
+    println(sa.bucketStarts.zipWithIndex.map{
+      x:Pair[Int,Int] => 
+      "%s %d" format (safeChr(x._2),x._1)
+    } mkString("\n"))
+    */
+    re("a.*br",maxIterations=10000,maxLength=10,debugLevel=2)
     //println(results)
     //println(sa.nextSubstr(0,1000))
     //assert(results.toString == "List(ca, [2 Results] cb)")

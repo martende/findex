@@ -135,5 +135,6 @@ object Util {
 
   }
   
+  def safeChr(c:Int) = if (c >= 0x20 && c < 0x7f) "%c".format(c) else "%d".format(c)
 
 }

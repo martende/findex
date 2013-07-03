@@ -2,6 +2,7 @@ package org.fmindex.re2
 
 import scala.collection.mutable.Stack
 import org.fmindex.SuffixWalkingAlgo
+import scala.collection.mutable.Map
 
 object REParser {
   val MIN_CHAR=2.toChar
@@ -142,13 +143,13 @@ object REParser {
     case class ConstState(c:Int,out:LinkState=new LinkState()) extends BaseState {
       def next = out.s
       override def links:List[LinkState] = List(out)
-      override def toString = if (c >= 0x20 && c < 0x7f) "ConstState('%c')".format(c) else "ConstState(%d)".format(c)
+      override def toString = if (c >= 0x20 && c < 0x7f) "C[%c]".format(c) else "ConstState(%d)".format(c)
     }
     case class IntervalState(start:Int,end:Int,out:LinkState=new LinkState()) extends BaseState {
       def next = out.s
       override def links:List[LinkState] = List(out)
-      override def toString = if (start.toChar==MIN_CHAR && end == MIN_CHAR) "IntevalState(.)" else
-        "IntervalState('%s-%s')".format(
+      override def toString = if (start.toChar==MIN_CHAR && end == MAX_CHAR) "I[.]" else
+        "I[%s-%s]".format(
           if (start >= 0x20 && start < 0x7f) start.toChar.toString else start.toString,
           if (end >= 0x20 && end < 0x7f) end.toChar.toString else end.toString
         )
@@ -287,7 +288,10 @@ object REParser {
 
 
       
-    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) {
+    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) extends Ordered[Task] {
+      
+      val cnt = ep - sp
+      override def toString = "(%s:%d,%d-%d,%d)" format (state,len,sp,ep,cnt)
       def overlaps(that: StatePoint) = {
         val i0 = (this.sp max that.sp) // lower bound of intersection interval
         val i1 = (this.ep min that.ep) // upper bound of intersection interval
@@ -351,30 +355,72 @@ object REParser {
         var statesFront = liststates( Set(),nfa ).map {
             StatePoint(0,_,0,sa.n)
         }.toList
+
+        
+        val statesSeenIM = statesFront.groupBy { _.state }.map { 
+          s:(BaseState, List[StatePoint]) =>  s._1 -> s._2.map { c:StatePoint => (c.sp,c.ep) }  
+        }
+        val statesSeen:Map[BaseState,List[Pair[Int,Int]]] = Map(statesSeenIM.toSeq:_*)
+        
+
+        
         debug(2,"Start statesFrom %s",statesFront)
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
         def debugOverlapCheck(s:StatePoint,sf:List[StatePoint]) = sf.find({
           ss:StatePoint => s.state == ss.state && (s overlaps ss)
         })
-          
+        
+        def overlaps(sp:Int,ep:Int,pl:List[Pair[Int,Int]]) = pl.find({
+          ss:Pair[Int,Int] => 
+            val i0 = (sp max ss._1)
+            val i1 = (ep min ss._2)
+            (i0 <= i1)
+        })
+        def contains(sp:Int,ep:Int,pl:List[Pair[Int,Int]]) = pl.find({
+          ss:Pair[Int,Int] => (sp >= ss._1) && (ep <= ss._2)
+        })
+
+        def debugStatesPower(sf:List[StatePoint]) = sf.foldLeft(0)(_ + _.cnt)
+
         while( ! statesFront.isEmpty && (maxIterations == 0 || i < maxIterations ) ) {
+            val dsCnt = debugStatesPower(statesFront)
+            val dsSize = statesFront.length
+
             val state = statesFront.head
             statesFront = statesFront.tail
             val newStates = state.expand(sa)
-            debug(2,"%2d. Take State=%s and create newStates %s",i,state,newStates)
+            debug(2,"%2d.SC:%d.FS.%d Take State=%s and create newStates %s",i,dsCnt,dsSize,state,newStates)
 
             newStates.foreach {
                 s:StatePoint=> s.state match {
                     case MatchState => 
                       results::=SAResult(sa,s.len,s.sp,s.ep)
                     case _ if maxLength == 0 || s.len < maxLength => 
-                      debugOverlapCheck(s,statesFront) match {
-                        case Some(sp) => printf("%s OVERLAPPS %s !\n",s,sp)
-                        case _        => 
-                      }
+                      if ( s.cnt < 10 ) {
+                          printf("%s SMALLI!\n",s)
+                        } else {
+                          debugOverlapCheck(s,statesFront) match {
+                            case Some(sp) => printf("%s OVERLAPPS %s !\n",s,sp)
+                            case _        => 
+                          }
+                          val seenStates = statesSeen.getOrElse(s.state,List()) 
+                          
+                          overlaps(s.sp,s.ep,seenStates) match {
+                            case Some((sp,ep)) => printf("SEEN: new state %s OVERLAPPS seen (%d,%d) !\n",s,sp,ep)
+                            case _        => 
+                          }
+                          
+                          contains(s.sp,s.ep,seenStates) match {
+                            case Some((sp,ep)) => printf("SEEN: new state %s CONTAINS seen (%d,%d) !\n",s,sp,ep)
+                            case _        => 
+                              val updati = (s.sp,s.ep) :: seenStates
+                              statesSeen(s.state) = updati
+                              statesFront ::= s
+                          }    
+                        }
                       
-                      statesFront ::= s
+                      
                     case _ => 
                 }
             }
