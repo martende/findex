@@ -288,9 +288,11 @@ object REParser {
 
 
       
-    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) extends Ordered[Task] {
-      
+    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) extends Ordered[StatePoint] {
       val cnt = ep - sp
+      
+      def compare(that:StatePoint) = if (that.cnt < this.cnt) -1 else if (that.cnt > this.cnt) 1 else 0
+
       override def toString = "(%s:%d,%d-%d,%d)" format (state,len,sp,ep,cnt)
       def overlaps(that: StatePoint) = {
         val i0 = (this.sp max that.sp) // lower bound of intersection interval
@@ -351,7 +353,7 @@ object REParser {
         var results = List[SAResult]()
         //println(moves(cur_state).mkString(","))
         var i = 0
-
+        var pqFront = new scala.collection.mutable.PriorityQueue[StatePoint]()
         var statesFront = liststates( Set(),nfa ).map {
             StatePoint(0,_,0,sa.n)
         }.toList
@@ -419,8 +421,7 @@ object REParser {
                               statesFront ::= s
                           }    
                         }
-                      
-                      
+
                     case _ => 
                 }
             }
