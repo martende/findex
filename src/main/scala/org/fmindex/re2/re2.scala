@@ -3,6 +3,7 @@ package org.fmindex.re2
 import scala.collection.mutable.Stack
 import org.fmindex.SuffixWalkingAlgo
 import scala.collection.mutable.Map
+import scala.collection.mutable.PriorityQueue
 
 object REParser {
   val MIN_CHAR=2.toChar
@@ -291,7 +292,7 @@ object REParser {
     case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) extends Ordered[StatePoint] {
       val cnt = ep - sp
       
-      def compare(that:StatePoint) = if (that.cnt < this.cnt) -1 else if (that.cnt > this.cnt) 1 else 0
+      def compare(that:StatePoint) = if (that.cnt < this.cnt) 1 else if (that.cnt > this.cnt) -1 else 0
 
       override def toString = "(%s:%d,%d-%d,%d)" format (state,len,sp,ep,cnt)
       def overlaps(that: StatePoint) = {
@@ -354,22 +355,27 @@ object REParser {
         //println(moves(cur_state).mkString(","))
         var i = 0
         var pqFront = new scala.collection.mutable.PriorityQueue[StatePoint]()
+        
+        for ( s <- liststates( Set(),nfa ) ) {
+            pqFront.enqueue(StatePoint(0,s,0,sa.n))
+        }
+        /*
         var statesFront = liststates( Set(),nfa ).map {
             StatePoint(0,_,0,sa.n)
         }.toList
+        */
 
-        
-        val statesSeenIM = statesFront.groupBy { _.state }.map { 
+        val statesSeenIM = pqFront.toList.groupBy { _.state }.map { 
           s:(BaseState, List[StatePoint]) =>  s._1 -> s._2.map { c:StatePoint => (c.sp,c.ep) }  
         }
         val statesSeen:Map[BaseState,List[Pair[Int,Int]]] = Map(statesSeenIM.toSeq:_*)
         
 
         
-        debug(2,"Start statesFrom %s",statesFront)
+        debug(2,"Start statesFrom %s",pqFront)
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
 
-        def debugOverlapCheck(s:StatePoint,sf:List[StatePoint]) = sf.find({
+        def debugOverlapCheck(s:StatePoint,sf:Iterable[StatePoint]) = sf.find({
           ss:StatePoint => s.state == ss.state && (s overlaps ss)
         })
         
@@ -383,26 +389,35 @@ object REParser {
           ss:Pair[Int,Int] => (sp >= ss._1) && (ep <= ss._2)
         })
 
-        def debugStatesPower(sf:List[StatePoint]) = sf.foldLeft(0)(_ + _.cnt)
+        def debugStatesPower(sf:Iterable[StatePoint]) = sf.foldLeft(0)(_ + _.cnt)
 
-        while( ! statesFront.isEmpty && (maxIterations == 0 || i < maxIterations ) ) {
-            val dsCnt = debugStatesPower(statesFront)
-            val dsSize = statesFront.length
+        while( ! pqFront.isEmpty && (maxIterations == 0 || i < maxIterations ) ) {
+            val dsCnt = debugStatesPower(pqFront)
+            val dsSize = pqFront.length
 
-            val state = statesFront.head
-            statesFront = statesFront.tail
+            val state = pqFront.dequeue
+            //statesFront = statesFront.tail
             val newStates = state.expand(sa)
-            debug(2,"%2d.SC:%d.FS.%d Take State=%s and create newStates %s",i,dsCnt,dsSize,state,newStates)
+            val _debugStatePower = debugStatesPower(newStates)
+            val distinctStatesCnt = newStates.groupBy(_.state).size
+            debug(2,"%2d.SC:%d.FS.%d Take State=%s and create newStates newStatesCnt=%d "+
+              "newStatesPower=%d ratio=%f nratio=%f",i,dsCnt,dsSize,
+              state,
+              newStates.length,
+              _debugStatePower,
+              if ( _debugStatePower != 0  ) _debugStatePower/state.cnt.toFloat else -1.0,
+              if ( _debugStatePower != 0  ) _debugStatePower/distinctStatesCnt/state.cnt.toFloat else -1.0
+            )
 
             newStates.foreach {
                 s:StatePoint=> s.state match {
                     case MatchState => 
                       results::=SAResult(sa,s.len,s.sp,s.ep)
                     case _ if maxLength == 0 || s.len < maxLength => 
-                      if ( s.cnt < 10 ) {
+                      /*if ( s.cnt < 10 ) {
                           printf("%s SMALLI!\n",s)
-                        } else {
-                          debugOverlapCheck(s,statesFront) match {
+                      } else {*/
+                          debugOverlapCheck(s,pqFront) match {
                             case Some(sp) => printf("%s OVERLAPPS %s !\n",s,sp)
                             case _        => 
                           }
@@ -418,9 +433,9 @@ object REParser {
                             case _        => 
                               val updati = (s.sp,s.ep) :: seenStates
                               statesSeen(s.state) = updati
-                              statesFront ::= s
+                              pqFront.enqueue(s)
                           }    
-                        }
+                      //}
 
                     case _ => 
                 }

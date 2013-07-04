@@ -25,3 +25,7 @@ BWTDisk
 1) http://people.unipmn.it/manzini/bwtdisk/bwte.pdf
 2) http://www.cs.hut.fi/~travis/papers/algorithmica12.pdf
 
+
+A Comparison of BWT Approaches to String Pattern Matching.
+
+http://vlsi.cs.ucf.edu/nsf/files/reportVer05driver.pdf

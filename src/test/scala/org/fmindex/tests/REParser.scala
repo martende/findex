@@ -362,7 +362,7 @@ class RE2Search  extends FunSuite with RandomGenerator {
       "%s %d" format (safeChr(x._2),x._1)
     } mkString("\n"))
     */
-    re("a.*br",maxIterations=10000,maxLength=10,debugLevel=2)
+    re("a.*br",maxIterations=5,maxLength=10,debugLevel=2)
     //println(results)
     //println(sa.nextSubstr(0,1000))
     //assert(results.toString == "List(ca, [2 Results] cb)")
