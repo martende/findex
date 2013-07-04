@@ -134,20 +134,24 @@ object REParser {
     
     
     abstract class BaseState() {
-        def links:List[LinkState] = List()
+      def links:List[LinkState] = List()
     }
     class LinkState(_s:BaseState=null) {
-        var s:BaseState=_s
-        override def toString = if (s == null) "<EMPTY>" else "<" + s.getClass + ">"
+      var s:BaseState=_s
+      override def toString = if (s == null) "<EMPTY>" else "<" + s.getClass + ">"
     }
 
-    case class ConstState(c:Int,out:LinkState=new LinkState()) extends BaseState {
-      def next = out.s
+    abstract class TermState extends BaseState {
+      def next:BaseState
+    }
+
+    case class ConstState(c:Int,out:LinkState=new LinkState()) extends TermState {
+      override def next = out.s
       override def links:List[LinkState] = List(out)
       override def toString = if (c >= 0x20 && c < 0x7f) "C[%c]".format(c) else "ConstState(%d)".format(c)
     }
-    case class IntervalState(start:Int,end:Int,out:LinkState=new LinkState()) extends BaseState {
-      def next = out.s
+    case class IntervalState(start:Int,end:Int,out:LinkState=new LinkState()) extends TermState {
+      override def next = out.s
       override def links:List[LinkState] = List(out)
       override def toString = if (start.toChar==MIN_CHAR && end == MAX_CHAR) "I[.]" else
         "I[%s-%s]".format(
@@ -156,10 +160,10 @@ object REParser {
         )
     }
     case class SplitState(out1:LinkState,out2:LinkState) extends BaseState {
-        override def links:List[LinkState] = if ( out2 != null) List(out1,out2) else List(out1)
+      override def links:List[LinkState] = if ( out2 != null) List(out1,out2) else List(out1)
     }
     object MatchState extends BaseState {
-        override def toString = "<MatchState>"
+      override def toString = "<MatchState>"
     }
 
     object State {
@@ -288,18 +292,26 @@ object REParser {
     }
 
 
-      
-    case class StatePoint(len:Int,state:BaseState,sp:Int,ep:Int) extends Ordered[StatePoint] {
+    case class Interval(sp:Int,ep:Int) {
       val cnt = ep - sp
+    }
+
+    case class StatePoint(len:Int,state:BaseState,_intervals: List[Interval]) extends Ordered[StatePoint] {
+      val intervals:List[Interval] = _intervals
+      val icnt = intervals.size
+      val cnt = intervals.foldLeft(0)(_ + _.cnt)
       
       def compare(that:StatePoint) = if (that.cnt < this.cnt) 1 else if (that.cnt > this.cnt) -1 else 0
 
-      override def toString = "(%s:%d,%d-%d,%d)" format (state,len,sp,ep,cnt)
+      override def toString = "(%s:%d,%d,%d)" format (state,len,icnt,cnt)
+      /*
       def overlaps(that: StatePoint) = {
+        
         val i0 = (this.sp max that.sp) // lower bound of intersection interval
         val i1 = (this.ep min that.ep) // upper bound of intersection interval
         (i0 <= i1)
       }
+      */
       def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
           if ( s == null || nlist(s)) nlist else
           s match {
@@ -309,19 +321,38 @@ object REParser {
               case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
                   nlist + s
           }
+      lazy val nextStates = state match {
+        case el:TermState =>  liststates(Set(),el.next).toList
+        case _ => ???
+      }
       def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
           var ret = List()
+
           state match {
-              case el @ ConstState(chr1,_)  => sa.getPrevRange(sp,ep,chr1.toByte) match {
-                  case Some((sp1,ep1))      => liststates(Set(),el.next).toList.map {StatePoint(len+1,_,sp1,ep1)}
-                  case None                 => List()
-              }
-              case el @ IntervalState(start,end,_) => 
-                val t = sa.getIntervalPrevRange(sp,ep,start,end)
-                if (t.isEmpty) List() else {
-                  val nextStates = liststates(Set(),el.next).toList
-                  nextStates.map({ s:BaseState => t.map { p:Pair[Int,Int] => StatePoint(len+1,s,p._1,p._2)  } }).flatten
+              case el @ ConstState(chr1,_)  => 
+                var ret = List[Interval]()
+                for (itvl <- intervals) {
+                  sa.getPrevRange(itvl.sp,itvl.ep,chr1) match {
+                    case Some((sp1,ep1))      => ret ::= Interval(sp1,ep1)
+                    case None                 => 
+                  }
                 }
+                if ( ! ret.isEmpty)
+                  nextStates.map {StatePoint(len+1,_,ret)}
+                else 
+                  List()
+              case el @ IntervalState(start,end,_) => 
+                var ret = List[Interval]()
+                for (itvl <- intervals; chr1 <- start until end) {
+                  sa.getPrevRange(itvl.sp,itvl.ep,chr1) match {
+                    case Some((sp1,ep1))      => ret ::= Interval(sp1,ep1)
+                    case None                 => 
+                  }
+                }
+                if ( ! ret.isEmpty)
+                  nextStates.map {StatePoint(len+1,_,ret)}
+                else 
+                  List()
           }
       }
     }
@@ -357,7 +388,7 @@ object REParser {
         var pqFront = new scala.collection.mutable.PriorityQueue[StatePoint]()
         
         for ( s <- liststates( Set(),nfa ) ) {
-            pqFront.enqueue(StatePoint(0,s,0,sa.n))
+            pqFront.enqueue(StatePoint(0,s,List(Interval(0,sa.n))))
         }
         /*
         var statesFront = liststates( Set(),nfa ).map {
@@ -366,19 +397,19 @@ object REParser {
         */
 
         val statesSeenIM = pqFront.toList.groupBy { _.state }.map { 
-          s:(BaseState, List[StatePoint]) =>  s._1 -> s._2.map { c:StatePoint => (c.sp,c.ep) }  
+          s:(BaseState, List[StatePoint]) =>  s._1 -> s._2.map { c:StatePoint => c.intervals }.flatten
         }
-        val statesSeen:Map[BaseState,List[Pair[Int,Int]]] = Map(statesSeenIM.toSeq:_*)
+        val statesSeen:Map[BaseState,List[Interval]] = Map(statesSeenIM.toSeq:_*)
         
 
         
         debug(2,"Start statesFrom %s",pqFront)
         //var statesFront = Set(StatePoint(addstate(Set(),nfa).toList,0,0,sa.n))
-
+        /*
         def debugOverlapCheck(s:StatePoint,sf:Iterable[StatePoint]) = sf.find({
           ss:StatePoint => s.state == ss.state && (s overlaps ss)
         })
-        
+        */
         def overlaps(sp:Int,ep:Int,pl:List[Pair[Int,Int]]) = pl.find({
           ss:Pair[Int,Int] => 
             val i0 = (sp max ss._1)
@@ -412,11 +443,18 @@ object REParser {
             newStates.foreach {
                 s:StatePoint=> s.state match {
                     case MatchState => 
-                      results::=SAResult(sa,s.len,s.sp,s.ep)
+                      for (intl <- s.intervals) {
+                        results::=SAResult(sa,s.len,intl.sp,intl.ep)
+                      }
                     case _ if maxLength == 0 || s.len < maxLength => 
+                      //val seenStates = statesSeen.getOrElse(s.state,List()) 
+                      //val updati = (s.sp,s.ep) :: seenStates
+                      //statesSeen(s.state) = updati
+                      pqFront.enqueue(s) 
                       /*if ( s.cnt < 10 ) {
                           printf("%s SMALLI!\n",s)
                       } else {*/
+                        /*
                           debugOverlapCheck(s,pqFront) match {
                             case Some(sp) => printf("%s OVERLAPPS %s !\n",s,sp)
                             case _        => 
@@ -433,8 +471,9 @@ object REParser {
                             case _        => 
                               val updati = (s.sp,s.ep) :: seenStates
                               statesSeen(s.state) = updati
-                              pqFront.enqueue(s)
+                              pqFront.enqueue(s) 
                           }    
+                          */
                       //}
 
                     case _ => 

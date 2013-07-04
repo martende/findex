@@ -29,7 +29,7 @@ trait SuffixAlgo {
     //printf("sp=%d ,ep=%d , i= %d\n",sp,ep,i)
     if ( sp < ep ) Some((sp,ep)) else None
   }
-  def getPrevRange(sp:Int,ep:Int,c:Byte):Option[(Int,Int)] = {
+  def getPrevRange(sp:Int,ep:Int,c:Int):Option[(Int,Int)] = {
     var sp1 = cf(c) + occ(c,sp - 1)
     var ep1 = cf(c) + occ(c,ep-1)
     if ( sp1 < ep1 ) Some((sp1,ep1)) else None

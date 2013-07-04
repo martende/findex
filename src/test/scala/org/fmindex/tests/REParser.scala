@@ -329,7 +329,30 @@ class RE2Search  extends FunSuite with RandomGenerator {
     //assert(results.toString == "List(ca, [2 Results] cb)")
   }
  */
-
+ test("match SA t2 dir") {
+  import Util._
+  val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
+  val bm = new BWTMerger2(1024*10,debugLevel=0)
+  val (of,af) = bm.merge(r)
+  val fm = new FMCreator(of.getAbsolutePath,1024*1024)
+  val fmf = fm.create() 
+  val sa = new NaiveFMSearcher(fmf.getAbsolutePath)
+  
+  def re(s:String,maxIterations:Int=0,maxLength:Int=0,debugLevel:Int=0) = {
+      val re1 = REParser.createNFA(REParser.re2post(s))
+      var t:Double = 0.0
+      val result = timer({
+        REParser.matchSA(re1,sa,debugLevel=debugLevel,maxLength=maxLength,maxIterations=maxIterations).map{_.toString}.toSet
+      },{
+        x:Long => t = x/1e6
+      })
+      printf("RE '%s' - %.1f ms ret: %s\n",s,t,result.size.toString)
+      result
+  }
+  re("9......0",maxIterations=100,maxLength=100,debugLevel=2)
+  // re("9.*0",maxIterations=20,maxLength=100,debugLevel=2)
+ }
+  /*
  test("match SA FMindex") {
   import Util._
 
@@ -367,5 +390,5 @@ class RE2Search  extends FunSuite with RandomGenerator {
     //println(sa.nextSubstr(0,1000))
     //assert(results.toString == "List(ca, [2 Results] cb)")
   }
-  
+  */  
 }
