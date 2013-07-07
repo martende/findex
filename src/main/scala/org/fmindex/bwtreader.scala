@@ -215,8 +215,9 @@ class FileBWTReader(_filename:String,maxSize:Int=0) extends IBWTReader {
 }
 
 
-class StringBWTReader(_b:Array[Byte]) extends IBWTReader {
-  val b:Array[Byte] = _b
+class StringBWTReader(_b:String,_filename:String="StringBWTReader",direct:Boolean=false) extends IBWTReader {
+  override val filename = _filename
+  val b:Array[Byte] = if (direct) _b.reverse.getBytes() else _b.getBytes()
   def copyReverse(t:Array[Byte]):Int = {
     var i = t.length -1 
     while ( i >= 0 && pos < b.length ) {

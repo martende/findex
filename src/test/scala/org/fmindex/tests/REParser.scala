@@ -349,7 +349,7 @@ class RE2Search  extends FunSuite with RandomGenerator {
       printf("RE '%s' - %.1f ms ret: %s\n",s,t,result.size.toString)
       result
   }
-  re("9......0",maxIterations=100,maxLength=100,debugLevel=2)
+  re("99*0",maxIterations=100,maxLength=100,debugLevel=2)
   // re("9.*0",maxIterations=20,maxLength=100,debugLevel=2)
  }
   /*

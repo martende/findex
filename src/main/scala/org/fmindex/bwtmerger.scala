@@ -21,6 +21,10 @@ object BWTTempStorage {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".aux" 
   }
+  def genWFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".w" 
+  }
   def genCacheFilename(s:String) = {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".cache" 
@@ -281,6 +285,7 @@ class NaiveFMSearcher(filename:String,bigEndian:Boolean=true) extends SuffixWalk
 
 }
 
+
 class FMCreator(filename:String,bufferSize:Int=1024,debugLevel:Int=0,bigEndian:Boolean=true) {
   import java.io.RandomAccessFile
   import java.io.FileInputStream
@@ -341,6 +346,7 @@ class FMCreator(filename:String,bufferSize:Int=1024,debugLevel:Int=0,bigEndian:B
     }
     // Header
     outb.write(elSize) // Item Size 
+    
     outb.writeLong(bwtlen) // Item Size 
 
     val headerOffset = outb.getChannel.position

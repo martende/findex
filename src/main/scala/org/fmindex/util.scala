@@ -132,7 +132,121 @@ object Util {
       }
       occ
     }
+    // bwt,fm to string
+    def bwtFm2t(bwt:Array[Byte],fm:Array[Int],idx:Int) = {
+      val n = bwt.length      
+      val t = new Array[Byte](n)
+      var i = 0
+      
+      var j = fm(idx)
+      while ( i < n -1 ) {
+        t(i)=bwt(j)
+        j = fm(j)
+        i=i+1
+      }
+      t(n-1)=0
+      //t(j-1)=0
+      t
+    }
 
+    // bwt,fm,bs to lcp ( longest common prefix)
+    def bwtFm2LCP(bwt:Array[Byte],fm:Array[Int],bs:Array[Long],idx:Int) = {
+      val n = bwt.length      
+      val LCP = new Array[Int](n)
+      var i = 0
+      var nextk = 0
+      var k = idx
+      var h = 0
+
+      def ibs2c(i:Int):Int = {
+        assert(i < n)
+        val j = bs.indexWhere(i < _,0)
+        j-1
+      }
+      def iterChar(_j:Int,_h:Int,_temp:Int) = {
+        var h = _h
+        var j = _j
+        var temp = _temp        
+        if (h != 0 && temp == -1) {
+          var t = 0
+          while ( h > 0 ) {
+            j = fm(j)
+            h -= 1
+          }
+          temp = j
+        } else {
+          if ( temp != -1 ) {
+            j = fm(temp)
+            temp = j
+          }
+        }
+        (temp,ibs2c(j))
+      }
+
+      while ( i < n) {
+        if (k==0) {
+          LCP(k) = 0
+        } else {
+          var temp1 = -1
+          var temp2 = -1
+          var j = k-1
+          var stop = false
+          while(  i+h < n && ! stop) {
+            val ic1 = iterChar(k,h,temp1)
+            val ic2 = iterChar(j,h,temp2)
+            if ( ic1._2 == ic2._2) {
+              temp1 = ic1._1
+              temp2 = ic2._1
+              h += 1
+            } else {
+              stop=true
+            }
+          }
+          LCP(k-1)=h
+        }
+        if( h > 0 ) h -= 1
+        k=fm(k)
+        i+=1
+      }
+      LCP
+    }
+    def bwtFm2sa(bwt:Array[Byte],fm:Array[Int],eof:Int) = {
+      val n = bwt.length      
+      val sa = new Array[Int](n)
+      var i = eof
+      var j = 0
+      while ( j < n) {
+        sa(i)=j
+        i = fm(i)
+        j+=1
+      }
+      sa
+    }
+    def printSA(bwt:Array[Byte],fm:Array[Int],eof:Int,lcp:Array[Int]=null) = {
+      val sa = bwtFm2sa(bwt,fm,eof)
+      val s = bwtFm2t(bwt,fm,eof)
+      val n = bwt.length
+      println("*** printSA")
+      def stringLike(i:Int):String = {
+        val idx = sa(i)
+        if ( idx == -1 )
+          List.fill(n)(".").mkString
+        else
+          (s.view.slice(idx,n) ++ s.view.slice(0,idx)).map{_.toChar}mkString("")
+      }
+      for ( i <- 0 until n) {
+        var strelem = stringLike(i)
+        if (strelem.length > 40 ) {
+          strelem = strelem.substring(0,10) + "..." + strelem.substring(strelem.length-10,strelem.length) 
+        }
+        if ( lcp != null) {
+          printf("%2d -> %2d.\t%s\t%d\n",i,sa(i),strelem.map(c => if ( c < 0x20) '_' else c ),lcp(i))   
+        } else {
+          printf("%2d -> %2d.\t%s\n",i,sa(i),strelem.map(c => if ( c < 0x20) '_' else c ))   
+        }
+        
+      }
+    }
   }
   
   def safeChr(c:Int) = if (c >= 0x20 && c < 0x7f) "%c".format(c) else "%d".format(c)
