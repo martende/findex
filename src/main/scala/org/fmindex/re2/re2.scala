@@ -242,6 +242,65 @@ object REParser {
 
     }
     
+    trait LCPSuffixWalkingAlgo extends SuffixWalkingAlgo {
+      def getStringOn(i:Int):Iterator[Char]
+      def getLCP(i:Int):Int
+    }
+
+    def paralelSearch(nfa:BaseState,sp:Int,ep:Int,lcpa:LCPSuffixWalkingAlgo, debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
+      def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("paralelSearch: " +s).format(xs: _*))
+      var results = List[SAResult]()
+      var i = sp
+      while ( i < ep ) {
+        val lcp = lcpa.getLCP(i)
+        matchNFA2(nfa,lcpa.getStringOn(i),lcpa.read,lcp)
+        i+=1
+      }
+    }
+
+
+    def matchNFA2(nfa:BaseState,s:Iterator[Char],lcp:Int,debug:Boolean=false):Boolean = {
+        var i = 0
+        
+        def addstate(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
+            if ( s == null || nlist(s)) nlist else
+            s match {
+                case SplitState(out1,out2) => 
+                    val t = addstate(nlist,out1.s)
+                    addstate(t,out2.s)
+                case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
+                    nlist + s
+            }
+        
+        def step(clist:List[BaseState],c:Int):List[BaseState] = {
+            var nlist:Set[BaseState]=Set()
+            var i = clist
+            while (! i.isEmpty) {
+                i.head match {
+                    case el @ ConstState(x,_) if (c==x ) =>
+                      nlist = addstate(nlist,el.out.s)
+                    case el @ IntervalState(s,e,_) if (c >= s && s <=e) =>
+                      nlist = addstate(nlist,el.out.s)
+                    case _ => 
+                }
+
+                i = i.tail
+            }
+            nlist.toList
+        }
+
+        var clist:List[BaseState] = addstate(Set(),nfa).toList
+        
+        while ( s.hasNext) {
+            val c = s.next()
+            if ( debug ) printf("%2d.\t %c %s\n",i,c,clist)
+            clist = step(clist, c)
+            i+=1
+        }
+        if ( debug ) printf("RESULT\t %s\n",clist)
+        clist.exists {_ == MatchState}
+    }
+
     def matchNFA(nfa:BaseState,s:String,debug:Boolean=false):Boolean = {
         //var clist:List
         val l = s.length
@@ -368,6 +427,7 @@ object REParser {
             "[no results]" 
         override def toString = strResult
     }
+    
 
     def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
         def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
