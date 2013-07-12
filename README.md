@@ -33,3 +33,7 @@ http://vlsi.cs.ucf.edu/nsf/files/reportVer05driver.pdf
 A Fast Regular Expression Indexing Engine
 
 http://rose.cs.ucla.edu/~cho/papers/cho-regex.pdf
+
+Regular Expression Matching with Multi-Strings and Intervals
+
+http://www.siam.org/proceedings/soda/2010/SODA10_104_billep.pdf

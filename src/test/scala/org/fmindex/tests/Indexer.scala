@@ -997,37 +997,18 @@ class MergerTest2 extends FunSuite {
     val gt = kmpIn.readBit()
   }
   
+
+
 }
 
 class BadTest extends FunSuite {
   import Util.bwtstring._
-  test("StringBWTReader") {
-    val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
-
-    //val r = new StringBWTReader("mississippi",direct=true)
-    val bm = new BWTMerger2(1024,debugLevel=0)
-    val (bwtf,af) = bm.merge(r)
-    val fmc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
-    val fmf = fmc.create()
-    val fml = new FMLoader(fmf)
-    val fm = fml.readAll()
-    val bwtl = new BWTLoader(bwtf)
-    val bwt = bwtl.readAll()
-    
-    //println(bwt.mkString(","))
-    //println(bwtFm2t(bwt,fm,bwtl.eof.toInt).map{_.toChar}.mkString(","))
-    /*
-    println("LCP",bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt).mkString(","))
-    */
-    printSA(bwt,fm,bwtl.eof.toInt,bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt))
-    //println(bwtFm2sa(bwt,fm,bwtl.eof.toInt).mkString(","))
-    //println("LCP",bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt).mkString(","))
-
-  }
 
 }
 
 class CombinedIndexingTest extends FunSuite {
+  import Util.bwtstring._
+
   test ("test1024.txt") {
     val dir = "testdata/test1024.txt"
     var selfTest:Boolean = true
@@ -1074,5 +1055,25 @@ class CombinedIndexingTest extends FunSuite {
     }
 
   }
+  test("LCPLoader") {
+    val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
 
+    //val r = new StringBWTReader("mississippi",direct=true)
+    val bm = new BWTMerger2(1024,debugLevel=0)
+    val (bwtf,af) = bm.merge(r)
+    val fmc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
+    val fmf = fmc.create()
+    val fml = new FMLoader(fmf)
+    val fm = fml.readAll()
+    val bwtl = new BWTLoader(bwtf)
+    val bwt = bwtl.readAll()
+    val lcpc = new LCPCreator(bwtf.getAbsolutePath)
+    val lcpf = lcpc.create()
+    val lcpl = new LCPLoader(lcpf)
+
+    val fcp = lcpl.readAll()
+    val ccp = bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt)
+    
+    assert(fcp sameElements ccp.view.slice(0,fcp.length))
+  }
 }

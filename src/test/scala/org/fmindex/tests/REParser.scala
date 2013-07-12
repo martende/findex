@@ -342,14 +342,15 @@ class RE2Search  extends FunSuite with RandomGenerator {
       val re1 = REParser.createNFA(REParser.re2post(s))
       var t:Double = 0.0
       val result = timer({
-        REParser.matchSA(re1,sa,debugLevel=debugLevel,maxLength=maxLength,maxIterations=maxIterations).map{_.toString}.toSet
+        REParser.matchSA(re1,sa,debugLevel=debugLevel-1,maxLength=maxLength,maxIterations=maxIterations).map{_.toString}.toSet
       },{
         x:Long => t = x/1e6
       })
-      printf("RE '%s' - %.1f ms ret: %s\n",s,t,result.size.toString)
+      if (debugLevel>0)
+        printf("RE '%s' - %.1f ms ret: %s\n",s,t,result.size.toString)
       result
   }
-  re("99*0",maxIterations=100,maxLength=100,debugLevel=2)
+  re("99*0",maxIterations=100,maxLength=100,debugLevel=0)
   // re("9.*0",maxIterations=20,maxLength=100,debugLevel=2)
  }
   /*

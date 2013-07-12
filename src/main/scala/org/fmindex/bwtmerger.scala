@@ -33,6 +33,10 @@ object BWTTempStorage {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".fm" 
   }
+  def genLCPFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".lcp" 
+  }
   var count = 0
 }
 
@@ -159,6 +163,42 @@ class BWTLoader(f:File,bigEndian:Boolean=true) {
   }
 }
 
+class LCPLoader(f:File) {
+  val in = new java.io.FileInputStream(f)
+  val inb = new java.io.DataInputStream(in)
+  val inr = new java.io.RandomAccessFile(f,"r")
+  val size = f.length.toInt
+  val elSize = 4
+  val headerOffset = 0x0  
+
+  def read(i:Int) = {
+    inr.seek(headerOffset+i*elSize)
+    inr.readInt()
+  }
+
+  def readAll() = {
+    val b = new Array[Byte](size )
+    val outInts   = new Array[Int](size / elSize )
+    val n = b.length
+    var i = 0
+    var j = 0 
+    inb.read(b)
+    while ( i < n) {
+      outInts(j)= ( b(i+3) & 0xFF ) |( (b(i+2) & 0xFF) << 8 )|
+            ( (b(i+1) & 0xFF) << 16 )|
+            ( (b(i+0) & 0xFF) << 24 ) 
+      j+=1
+      i+=elSize
+    }
+    outInts
+  }
+
+  def close() {
+    inr.close
+    inb.close
+    in.close    
+  } 
+}
 class FMLoader(f:File,bigEndian:Boolean=true) {
   import java.io.RandomAccessFile
 
@@ -392,6 +432,103 @@ class FMCreator(filename:String,bufferSize:Int=1024,debugLevel:Int=0,bigEndian:B
     //outb.setLength(outb.getChannel.position)
 
     inbb.close()
+    outb.close()
+    outf
+  }
+}
+
+
+class LCPCreator(filename:String,debugLevel:Int=0,bigEndian:Boolean=true) {
+  import java.io.RandomAccessFile
+  import java.io.FileInputStream
+  import java.io.BufferedInputStream
+
+  val f = new File(filename)
+  if (!f.exists()) throw new Exception("File %s does not exists".format(filename))
+  
+  val aux = new AUXLoader(new File(BWTTempStorage.genAuxFilename(filename)),bigEndian=bigEndian)
+  val bwt = new BWTLoader(new File(BWTTempStorage.genBWTFilename(filename)),bigEndian=bigEndian)
+  val fml = new FMLoader(new File(BWTTempStorage.genFMFilename(filename)),bigEndian=bigEndian)
+
+  //val inbb = new java.io.BufferedInputStream(bwt.inb)
+
+  val occ = aux.occ
+
+  val outf = new File(BWTTempStorage.genLCPFilename(filename))
+  
+  val bs = {
+    var i = 1
+    val bs = new Array[Long](BWTMerger2.ALPHA_SIZE)    
+    var tot:Long = 1
+    while (i < BWTMerger2.ALPHA_SIZE) {
+      bs(i)+=tot
+      tot+=occ(i)
+      i+=1
+    }
+    bs
+  }
+  
+  def create(progressBar:Boolean=false):File = {
+    val n = fml.size
+    var i = 0
+    var nextk = 0
+    var k = bwt.eof.toInt
+    var h = 0
+    val outb = new RandomAccessFile(outf,"rw")
+
+    def ibs2c(i:Int):Int = {
+      assert(i < n)
+      val j = bs.indexWhere(i < _,0)
+      j-1
+    }
+    def iterChar(_j:Int,_h:Int,_temp:Int) = {
+      var h = _h
+      var j = _j
+      var temp = _temp        
+      if (h != 0 && temp == -1) {
+        var t = 0
+        while ( h > 0 ) {
+          j = fml.read(j)
+          h -= 1
+        }
+        temp = j
+      } else {
+        if ( temp != -1 ) {
+          j = fml.read(temp)
+          temp = j
+        }
+      }
+      (temp,ibs2c(j))
+    }
+
+    while ( i < n) {
+      if (k==0) {
+        outb.seek(0)
+        outb.writeInt(0)
+      } else {
+        var temp1 = -1
+        var temp2 = -1
+        var j = k-1
+        var stop = false
+        while(  i+h < n && ! stop) {
+          val ic1 = iterChar(k,h,temp1)
+          val ic2 = iterChar(j,h,temp2)
+          if ( ic1._2 == ic2._2) {
+            temp1 = ic1._1
+            temp2 = ic2._1
+            h += 1
+          } else {
+            stop=true
+          }
+        }
+        outb.seek((k-1)*4)
+        outb.writeInt(h)
+      }
+      if( h > 0 ) h -= 1
+      k=fml.read(k)
+      i+=1
+    }
+
     outb.close()
     outf
   }
