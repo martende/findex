@@ -31,7 +31,8 @@ class DirBWTReader(_dir:String,_filename:String="DirBWTReader",debugLevel:Int=0,
   //var in:java.io.FileInputStream = _
   var inb:java.io.BufferedInputStream = _ // new java.io.BufferedInputStream(in)
 
-  val cachefile = BWTTempStorage.genCacheFilename(_filename)
+  val cachefile = BWTTempStorage.genDataFilename(_filename)
+  
   var cacheoutb:java.io.BufferedOutputStream = if (caching) {
       val cacheout = new java.io.FileOutputStream(cachefile)
       new java.io.BufferedOutputStream(cacheout)

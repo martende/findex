@@ -1001,9 +1001,76 @@ class MergerTest2 extends FunSuite {
 
 }
 
-class BadTest extends FunSuite {
+class StringPosReaderTest extends FunSuite {
+  test("StringPosReader") {
+    val rf = new java.io.RandomAccessFile("testdata/test1024.txt","r")
+    val ts = new StringPosReader(rf,10,10)
+    var s=""
+    for (i<- 0 until 20) {
+      s+=ts.next()
+    }
+    assert(s.length==20)
+    assert("tsljkujjpzjerzfjyboh"==s)
+  }
+}
+
+class LCPLoaderTest extends FunSuite {
   import Util.bwtstring._
 
+  test("LCPLoader") {
+    val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
+
+    //val r = new StringBWTReader("mississippi",direct=true)
+    val bm = new BWTMerger2(1024,debugLevel=0)
+    val (bwtf,af) = bm.merge(r)
+    val fmc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
+    val fmf = fmc.create()
+    val fml = new FMLoader(fmf)
+    val fm = fml.readAll()
+    val bwtl = new BWTLoader(bwtf)
+    val bwt = bwtl.readAll()
+    val lcpc = new LCPCreator(bwtf.getAbsolutePath)
+    val lcpf = lcpc.create()
+    val lcpl = new LCPLoader(lcpf)
+
+    val fcp = lcpl.readAll()
+    val ccp = bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt)
+    
+    assert(fcp sameElements ccp.view.slice(0,fcp.length))
+  }
+}
+
+class SALoaderTest extends FunSuite {
+  import Util.bwtstring._
+
+  test("SALoader") {
+    val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
+
+    //val r = new StringBWTReader("mississippi",direct=true)
+    val bm = new BWTMerger2(1024,debugLevel=0)
+    val (bwtf,af) = bm.merge(r)
+    val fmc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
+    val fmf = fmc.create()
+    val fml = new FMLoader(fmf)
+    val fm = fml.readAll()
+    val bwtl = new BWTLoader(bwtf)
+    val bwt = bwtl.readAll()
+    val sac = new SACreator(bwtf.getAbsolutePath)
+    val saf = sac.create()
+    val sal = new SALoader(saf)
+
+    val fcp = sal.readAll()
+    //println(fcp.mkString(","))
+    val ccp = bwtFm2sa(bwt,fm,bwtl.eof.toInt)
+    //println(ccp.mkString(","))
+    assert(fcp sameElements ccp.view.slice(0,fcp.length))
+  }
+}
+
+
+class BadTest extends FunSuite {
+  import Util.bwtstring._
+  
 }
 
 class CombinedIndexingTest extends FunSuite {
@@ -1054,26 +1121,5 @@ class CombinedIndexingTest extends FunSuite {
         assert(sa.prevSubstr(sa.getPrevI(bwtl.eof.toInt),4)=="uexm")
     }
 
-  }
-  test("LCPLoader") {
-    val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0)
-
-    //val r = new StringBWTReader("mississippi",direct=true)
-    val bm = new BWTMerger2(1024,debugLevel=0)
-    val (bwtf,af) = bm.merge(r)
-    val fmc = new FMCreator(bwtf.getAbsolutePath,1024*1024)
-    val fmf = fmc.create()
-    val fml = new FMLoader(fmf)
-    val fm = fml.readAll()
-    val bwtl = new BWTLoader(bwtf)
-    val bwt = bwtl.readAll()
-    val lcpc = new LCPCreator(bwtf.getAbsolutePath)
-    val lcpf = lcpc.create()
-    val lcpl = new LCPLoader(lcpf)
-
-    val fcp = lcpl.readAll()
-    val ccp = bwtFm2LCP(bwt,fm,fmc.bucketStarts,bwtl.eof.toInt)
-    
-    assert(fcp sameElements ccp.view.slice(0,fcp.length))
   }
 }

@@ -48,6 +48,7 @@ object IndexerApp {
   def main(args: Array[String]) {
     var selfTest:Boolean = true
     var createFM = true
+    var createLCP = true
     var maxSize  = 0
     var dir:String = "/usr/include/";
     var i:Int = 10
@@ -61,7 +62,7 @@ object IndexerApp {
         args match {
             case Nil => true
             case "--dir"         :: x :: rest => dir = x ; process(rest)
-	    case "--cache-file"	 :: x :: rest => cacheFile = x ; process(rest)
+	        case "--cache-file"	 :: x :: rest => cacheFile = x ; process(rest)
             case "-i"            :: x :: rest => i = x.toInt ; process(rest)
             case "--max-size"    :: x :: rest => maxSize = 1024*x.toInt ; process(rest)
             case "--merge-debug-level"    :: x :: rest => mergeDebugLevel = x.toInt ; process(rest)
@@ -85,7 +86,10 @@ object IndexerApp {
         val fm = new FMCreator(of.getAbsolutePath,1024*1024*10)
         fm.create()        
     }
-
+    if ( createLCP ) {
+        val lcpc = new LCPCreator(of.getAbsolutePath)
+        lcpc.create()
+    }
     if ( selfTest ) {
         println("Selfchecking tests")
         val bwtl = new BWTLoader(of)

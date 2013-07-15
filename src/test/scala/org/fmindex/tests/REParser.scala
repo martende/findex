@@ -308,6 +308,24 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   }
 
 }
+class ParalelSearch  extends FunSuite with RandomGenerator {
+ test("ParalelSearch t2 dir") {
+  import Util._
+  val r = new DirBWTReader("testdata/t2","testdata/t2",debugLevel=0,caching=true)
+  val bm = new BWTMerger2(1024*10,debugLevel=0)
+  val (of,af) = bm.merge(r)
+  val fm = new FMCreator(of.getAbsolutePath,1024*1024)
+  val fmf = fm.create() 
+  val lcp = new LCPCreator(of.getAbsolutePath,1024*1024)
+  lcp.create() 
+  val sa = new SACreator(of.getAbsolutePath,1024*1024)
+  sa.create() 
+
+  val lcps = new LCPSearcher(of.getAbsolutePath)
+  val re1 = REParser.createNFA(REParser.re2post("1.*0"))
+  REParser.paralelSearch(re1,lcps,debugLevel=10)
+ }
+}
 
 class RE2Search  extends FunSuite with RandomGenerator {
   /*

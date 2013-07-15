@@ -5,6 +5,7 @@ import java.io.File
 
 import org.apache.commons.io.FilenameUtils
 import scala.collection.mutable.BitSet
+import java.io.RandomAccessFile
 
 object BWTTempStorage {
   def genTmpFilename(s:String) = {
@@ -37,6 +38,15 @@ object BWTTempStorage {
     val fileNameWithOutExt = FilenameUtils.removeExtension(s)
     fileNameWithOutExt + ".lcp" 
   }
+  def genDataFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".data" 
+  }
+  def genSAFilename(s:String) = {
+    val fileNameWithOutExt = FilenameUtils.removeExtension(s)
+    fileNameWithOutExt + ".sa" 
+  }
+  
   var count = 0
 }
 
@@ -134,7 +144,7 @@ class AUXLoader(f:File,bigEndian:Boolean=true) {
 class BWTLoader(f:File,bigEndian:Boolean=true) {
   val in = new java.io.FileInputStream(f)
   val inb = new java.io.DataInputStream(in)
-  val inr = new java.io.RandomAccessFile(f,"r")
+  val inr = new RandomAccessFile(f,"r")
 
   val headerOffset = 0x10  
   val size = if (bigEndian) inb.readLong() else java.lang.Long.reverseBytes(inb.readLong())
@@ -166,7 +176,7 @@ class BWTLoader(f:File,bigEndian:Boolean=true) {
 class LCPLoader(f:File) {
   val in = new java.io.FileInputStream(f)
   val inb = new java.io.DataInputStream(in)
-  val inr = new java.io.RandomAccessFile(f,"r")
+  val inr = new RandomAccessFile(f,"r")
   val size = f.length.toInt
   val elSize = 4
   val headerOffset = 0x0  
@@ -199,8 +209,48 @@ class LCPLoader(f:File) {
     in.close    
   } 
 }
+
+
+class SALoader(f:File) {
+  val in = new java.io.FileInputStream(f)
+  val inb = new java.io.DataInputStream(in)
+  val inr = new RandomAccessFile(f,"r")
+  val size = f.length.toInt
+  val elSize = 4
+  val headerOffset = 0x0  
+
+  def read(i:Int) = {
+    inr.seek(headerOffset+i*elSize)
+    inr.readInt()
+  }
+
+  def readAll() = {
+    val b = new Array[Byte](size )
+    val outInts   = new Array[Int](size / elSize )
+    val n = b.length
+    var i = 0
+    var j = 0 
+    inb.read(b)
+    while ( i < n) {
+      outInts(j)= ( b(i+3) & 0xFF ) |( (b(i+2) & 0xFF) << 8 )|
+            ( (b(i+1) & 0xFF) << 16 )|
+            ( (b(i+0) & 0xFF) << 24 ) 
+      j+=1
+      i+=elSize
+    }
+    outInts
+  }
+
+  def close() {
+    inr.close
+    inb.close
+    in.close    
+  } 
+}
+
+
 class FMLoader(f:File,bigEndian:Boolean=true) {
-  import java.io.RandomAccessFile
+  
 
   val in = new java.io.FileInputStream(f)
   val inb = new java.io.DataInputStream(in)
@@ -236,6 +286,49 @@ class FMLoader(f:File,bigEndian:Boolean=true) {
     inb.close
     inr.close
     in.close    
+  }
+}
+
+class StringPosReader(f:RandomAccessFile,_pos:Int,_bufCap:Int=4048) extends Iterator[Char] {
+  val bufCap = _bufCap
+  val buf:Array[Byte] = new Array[Byte](bufCap)
+  var bufpos = 0
+  var fpos   = _pos
+  f.seek(fpos)
+  var bufSize = f.read(buf)
+    
+  def hasNext:Boolean = if (bufSize <= 0) false 
+    else if (bufpos == bufSize) {
+      if (bufCap!=bufSize) false else {
+        fpos+=bufSize
+        f.seek(fpos)
+        bufSize = f.read(buf)
+        bufpos=0
+        if ( bufSize <= 0) false else buf(bufpos)!=0
+      }
+    } else buf(bufpos)!=0
+  
+  def next():Char = {
+    if ( hasNext ) {
+      val c = buf(bufpos)
+      bufpos+=1
+      c.toChar
+    } else {
+      ???
+    }
+  }
+}
+
+class LCPSearcher(filename:String,bigEndian:Boolean=true) extends NaiveFMSearcher(filename,bigEndian) with LCPSuffixWalkingAlgo {
+  val lcpl = new LCPLoader(new File(BWTTempStorage.genLCPFilename(filename)))
+  val sal = new SALoader(new File(BWTTempStorage.genSAFilename(filename)))
+  val dataFile = new File(BWTTempStorage.genDataFilename(filename))
+  val fsize = dataFile.length.toInt
+  val inr  = new RandomAccessFile(dataFile,"r")
+  def getLCP(i: Int): Int =  lcpl.read(i)
+  def getStringOn(i:Int):Iterator[Char] = {
+    println("getStringOn(%d) sa=%d".format(i,sal.read(i)))
+    new StringPosReader(inr,fsize-sal.read(i))
   }
 }
 
@@ -437,6 +530,28 @@ class FMCreator(filename:String,bufferSize:Int=1024,debugLevel:Int=0,bigEndian:B
   }
 }
 
+class SACreator(filename:String,debugLevel:Int=0,bigEndian:Boolean=true) {
+  val bwt = new BWTLoader(new File(BWTTempStorage.genBWTFilename(filename)),bigEndian=bigEndian)
+  val fml = new FMLoader(new File(BWTTempStorage.genFMFilename(filename)),bigEndian=bigEndian)
+
+  val outf = new File(BWTTempStorage.genSAFilename(filename))
+  
+  def create(progressBar:Boolean=false):File = {
+    val n = bwt.size
+    var i = bwt.eof.toInt
+    var j = 0
+    val outb = new RandomAccessFile(outf,"rw")
+
+    while ( j < n) {
+      outb.seek(i*4)
+      outb.writeInt(j)
+      i = fml.read(i)
+      j+=1
+    }
+    outb.close()
+    outf    
+  }
+}
 
 class LCPCreator(filename:String,debugLevel:Int=0,bigEndian:Boolean=true) {
   import java.io.RandomAccessFile

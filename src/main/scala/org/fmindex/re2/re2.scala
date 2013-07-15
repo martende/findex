@@ -2,6 +2,7 @@ package org.fmindex.re2
 
 import scala.collection.mutable.Stack
 import org.fmindex.SuffixWalkingAlgo
+import org.fmindex.LCPSuffixWalkingAlgo
 import scala.collection.mutable.Map
 import scala.collection.mutable.PriorityQueue
 
@@ -134,6 +135,19 @@ object REParser {
     
     
     abstract class BaseState() {
+      def outStates = {
+        def addState(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
+          if ( s == null || nlist(s)) nlist else
+          s match {
+              case SplitState(out1,out2) => 
+                  val t = addState(nlist,out1.s)
+                  addState(t,out2.s)
+              case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
+                  nlist + s
+          }
+        addState(Set(),this).toList
+      }
+      
       def links:List[LinkState] = List()
     }
     class LinkState(_s:BaseState=null) {
@@ -242,24 +256,10 @@ object REParser {
 
     }
     
-    trait LCPSuffixWalkingAlgo extends SuffixWalkingAlgo {
-      def getStringOn(i:Int):Iterator[Char]
-      def getLCP(i:Int):Int
-    }
-
-    def paralelSearch(nfa:BaseState,sp:Int,ep:Int,lcpa:LCPSuffixWalkingAlgo, debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
-      def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("paralelSearch: " +s).format(xs: _*))
-      var results = List[SAResult]()
-      var i = sp
-      while ( i < ep ) {
-        val lcp = lcpa.getLCP(i)
-        matchNFA2(nfa,lcpa.getStringOn(i),lcpa.read,lcp)
-        i+=1
-      }
-    }
 
 
-    def matchNFA2(nfa:BaseState,s:Iterator[Char],lcp:Int,debug:Boolean=false):Boolean = {
+
+    def matchNFA2(startFront:List[BaseState],s:Iterator[Char],lcp:Int,debugLevel:Int=0):Boolean = {
         var i = 0
         
         def addstate(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
@@ -289,16 +289,22 @@ object REParser {
             nlist.toList
         }
 
-        var clist:List[BaseState] = addstate(Set(),nfa).toList
-        
-        while ( s.hasNext) {
+        // var clist:List[BaseState] = addstate(Set(),nfa).toList
+        var front = startFront
+        var found = false
+
+        while ( s.hasNext && ! found ) {
             val c = s.next()
-            if ( debug ) printf("%2d.\t %c %s\n",i,c,clist)
-            clist = step(clist, c)
+            if ( debugLevel > 0 ) printf("%2d.\t %c %s\n",i,c,front)
+            val nextfront = step(front, c)
+            found = nextfront.exists {_ == MatchState}
+
+            front = nextfront
             i+=1
         }
-        if ( debug ) printf("RESULT\t %s\n",clist)
-        clist.exists {_ == MatchState}
+        if ( debugLevel > 0 ) printf("RESULT\t%s\n",front)
+
+        found
     }
 
     def matchNFA(nfa:BaseState,s:String,debug:Boolean=false):Boolean = {
@@ -360,28 +366,12 @@ object REParser {
       val icnt = intervals.size
       val cnt = intervals.foldLeft(0)(_ + _.cnt)
       
-      def compare(that:StatePoint) = if (that.cnt < this.cnt) 1 else if (that.cnt > this.cnt) -1 else 0
+      def compare(that:StatePoint) = if (that.len < this.len) 1 else if (that.len > this.len) -1 else 0
 
-      override def toString = "(%s:%d,%d,%d)" format (state,len,icnt,cnt)
-      /*
-      def overlaps(that: StatePoint) = {
-        
-        val i0 = (this.sp max that.sp) // lower bound of intersection interval
-        val i1 = (this.ep min that.ep) // upper bound of intersection interval
-        (i0 <= i1)
-      }
-      */
-      def liststates(nlist:Set[BaseState],s:BaseState):Set[BaseState] = 
-          if ( s == null || nlist(s)) nlist else
-          s match {
-              case SplitState(out1,out2) => 
-                  val t = liststates(nlist,out1.s)
-                  liststates(t,out2.s)
-              case MatchState | ConstState(_,_) | IntervalState(_,_,_) => 
-                  nlist + s
-          }
+      override def toString = "(%s:%d,icount=%d,len=%d)" format (state,len,icnt,cnt)
+
       lazy val nextStates = state match {
-        case el:TermState =>  liststates(Set(),el.next).toList
+        case el:TermState =>  el.next.outStates
         case _ => ???
       }
       def expand(sa:SuffixWalkingAlgo):List[StatePoint] = {
@@ -415,7 +405,7 @@ object REParser {
           }
       }
     }
-    
+    case class SATip(state:BaseState,len:Int,sp:Int,ep:Int)
     case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
         val cnt = ep - sp
         lazy val strResult:String = 
@@ -427,7 +417,86 @@ object REParser {
             "[no results]" 
         override def toString = strResult
     }
-    
+
+    def paralelSearch(nfa:BaseState,lcpa:LCPSuffixWalkingAlgo, debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
+      def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("paralelSearch: " +s).format(xs: _*))
+      def dump(lcpa:LCPSuffixWalkingAlgo,i:Int,len:Int,l:Int=10) = {
+        val it = lcpa.getStringOn(i)
+        var s=""
+        for (i <- 0 until l if it.hasNext) {
+          //if ( i == len ) {
+          //  s+="["+it.next().toString + "]"
+          //} else {
+          s+=it.next().toString
+          //}
+        }
+        s
+      }
+      var results = List[SAResult]()
+      
+      val (tipResults,tips) = getSATip(nfa,lcpa,debugLevel=debugLevel-1,branchingFactor=10)
+      println("tipResults",tipResults)
+      //println("tips",tips)
+
+      val tip = tips.head
+      //for (tip <- tips ) {
+        println("Take Tip",tip)
+        
+        var i = tip.sp
+        while ( i < tip.ep ) {
+          val lcp = if (i == tip.ep-1) 0 else lcpa.getLCP(i)
+          println("Test string %d len=%d lcp=%d %s".format(i,tip.len,lcp,dump(lcpa,i,tip.len+1) ))
+          matchNFA2(List(tip.state),lcpa.getStringOn(i),lcp,debugLevel-1)
+          i+=1
+        } 
+        
+      //}
+
+    }
+
+    def getSATip(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,branchingFactor:Int=100) = {
+      def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("getSATip: " +s).format(xs: _*))
+      var results = List[SAResult]()
+      var i = 0
+      var pqFront = new scala.collection.mutable.PriorityQueue[StatePoint]()
+      for ( s <- nfa.outStates ) {
+          pqFront.enqueue(StatePoint(0,s,List(Interval(0,sa.n))))
+      }
+      var frontSize = pqFront.size
+
+      val statesSeenIM = pqFront.toList.groupBy { _.state }.map { 
+        s:(BaseState, List[StatePoint]) =>  s._1 -> s._2.map { c:StatePoint => c.intervals }.flatten
+      }
+      val statesSeen:Map[BaseState,List[Interval]] = Map(statesSeenIM.toSeq:_*)
+
+      
+
+      while( ! pqFront.isEmpty && frontSize < branchingFactor ) {
+          val state = pqFront.dequeue
+          frontSize-=state.icnt
+          val newStates = state.expand(sa)
+          newStates.foreach {
+              s:StatePoint=> s.state match {
+                case MatchState => 
+                  for (intl <- s.intervals) {
+                    results::=SAResult(sa,s.len,intl.sp,intl.ep)
+                  }
+                case _ => 
+                  frontSize+=s.icnt
+                  pqFront.enqueue(s)
+              }
+          }
+          i+=1          
+      }
+      var tips = pqFront.map{ sp:StatePoint => 
+        sp.intervals.map{ in:Interval => 
+          SATip(sp.state,sp.len,in.sp,in.ep)
+        }
+      }.flatten.toList
+      println(pqFront)
+      debug(1,"Result = %s, Tips=%s",results,tips.length)
+      (results,tips)
+    }
 
     def matchSA(nfa:BaseState,sa:SuffixWalkingAlgo,debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
         def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))

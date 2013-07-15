@@ -56,6 +56,11 @@ trait SuffixWalkingAlgo extends SuffixAlgo {
   def prevSubstr(sp:Int,len:Int):String
 }
 
+trait LCPSuffixWalkingAlgo extends SuffixWalkingAlgo {
+  def getStringOn(i:Int):Iterator[Char]
+  def getLCP(i:Int):Int
+}
+
 trait BWTDebugging[T] {
   self:BWTBuilder[T] => 
 
