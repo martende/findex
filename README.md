@@ -37,3 +37,13 @@ http://rose.cs.ucla.edu/~cho/papers/cho-regex.pdf
 Regular Expression Matching with Multi-Strings and Intervals
 
 http://www.siam.org/proceedings/soda/2010/SODA10_104_billep.pdf
+
+
+Glushkov Automata
+http://www.cs.nyu.edu/~mohri/pub/glush.pdf
+
+New Techniques for Regular Expression Searching / Glushkov implementation
+http://www.dcc.uchile.cl/~gnavarro/ps/algor04.2.pdf
+
+Small NFAs from Regular Expressions: Some Experimental Results.
+http://www.dcc.fc.up.pt/cante/resources/Files/fa101.pdf
