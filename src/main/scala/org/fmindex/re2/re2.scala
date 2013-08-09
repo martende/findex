@@ -16,8 +16,11 @@ object REParser {
   class IntervalPoint(val start:Char,val end:Char) extends PostPoint {
     override def toString = if (start == MIN_CHAR && end==MAX_CHAR) "." else "[%c-%c]".format(start,end)
   }
+  class AltPoint(val alts:List[Char]) extends PostPoint {
+    override def toString = "[" + alts.reverse.mkString("") + "]"
+  }
   class ConcatPoint extends PostPoint {
-    override def toString = "."
+    override def toString = "·"
   }
   class StarPoint extends PostPoint{
     override def toString = "*"
@@ -40,10 +43,67 @@ object REParser {
     var dst =List[PostPoint]()
     case class Paren(nalt:Int,natom:Int)
     val s = Stack[Paren]()
+    var quoted = false;
+    
+    def processChar(c:Char) {
+      if(natom > 1){
+        natom-=1
+        dst = (new ConcatPoint())  :: dst
+      }
+      dst = (c match {
+        case '.' => new IntervalPoint(MIN_CHAR,MAX_CHAR)
+        case _ =>  new CharPoint(c)
+      } ) :: dst
+      natom+=1
+    }
+    def processAltChar(_i:Int) = {
+      var i = _i
+      var alts = List[Char]()
+      var quoted = false
+      var end = false
+      var interval = false
+      def processChar(c:Char) {
+        if ( interval ) {
+          if (alts.isEmpty) throw new Exception("re2post syntax")
+          var cAlt = alts.head.toInt + 1 
+          val eAlt = c.toInt
+          if (cAlt > eAlt) throw new Exception("re2post syntax")
+          while (cAlt <= eAlt ) {
+            alts = cAlt.toChar :: alts
+            cAlt += 1
+          }
+          interval = false
+        }
+        else alts = c :: alts
+      }
+      while ( i< l && ! end ) {
+        val c = str(i)
+        if ( quoted ) {
+          processChar(c)
+          quoted = false
+        } else c match {
+          case '\\' => quoted = true
+          case '-'  => interval = true
+          case ']'  => end  = true
+          case _ => processChar(c)
+        }
+        i+=1
+      }
+      if ( ! end || interval ) throw new Exception("re2post syntax")
+      
+      if(natom > 1){
+        natom-=1
+        dst = (new ConcatPoint())  :: dst
+      }
+      dst = (new AltPoint(alts)) :: dst
+      natom+=1
+
+      i - 1
+    }
 
     while ( i< l) {
       val c = str(i)
-      c match {
+      if (! quoted) c match {
         case '(' =>
           if(natom > 1){
             natom-=1
@@ -74,7 +134,10 @@ object REParser {
           val t = s.pop()
           nalt = t.nalt
           natom = t.natom+1
-
+        case '['  => 
+          i = processAltChar(i+1) - 1
+        case '\\' => 
+          quoted = true
         case '*'|'+'|'?' =>
           if ( natom == 0) throw new Exception("re2post syntax")
           dst::= (c match {
@@ -84,15 +147,10 @@ object REParser {
           }       )
 
         case _   =>
-          if(natom > 1){
-            natom-=1
-            dst = (new ConcatPoint())  :: dst
-          }
-          dst = (c match {
-            case '.' => new IntervalPoint(MIN_CHAR,MAX_CHAR)
-            case _ =>  new CharPoint(c)
-          } ) :: dst
-          natom+=1
+          processChar(c)
+      } else {
+        processChar(c)
+        quoted = false
       }
       i+=1
     }

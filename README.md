@@ -47,3 +47,6 @@ http://www.dcc.uchile.cl/~gnavarro/ps/algor04.2.pdf
 
 Small NFAs from Regular Expressions: Some Experimental Results.
 http://www.dcc.fc.up.pt/cante/resources/Files/fa101.pdf
+
+A Hybrid Indexing Method for Approximate String Matching
+http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.134.9634

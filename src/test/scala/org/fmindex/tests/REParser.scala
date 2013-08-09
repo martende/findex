@@ -9,11 +9,11 @@ import org.fmindex.re2._
 class RE2Parser  extends FunSuite with RandomGenerator {
   test("re2post") {
     val r = REParser.re2poststr("abc")
-    assert(r=="ab.c.","r="+r)
+    assert(r=="ab·c·","r="+r)
   }
   test("re2post2") {
     val r = REParser.re2poststr("a(bb)+a")
-    assert(r=="abb.+.a.","r="+r)
+    assert(r=="abb·+·a·","r="+r)
   }
   test("re2post3") {
     val r = REParser.re2poststr("(a|b)")
@@ -22,8 +22,14 @@ class RE2Parser  extends FunSuite with RandomGenerator {
   test("re2post4") {
     val r = REParser.re2poststr("((a|b)*aba*)*(a|b)(a|b)")
     
-    assert(r=="ab|*a.b.a*.*ab|.ab|.","r="+r)
+    assert(r=="ab|*a·b·a*·*ab|·ab|·","r="+r)
   }
+  test("re2post5") {
+    val r = REParser.re2poststr("a.*\\(b[a-z].*c")
+    
+    assert(r=="a.*·(·b·[abcdefghijklmnopqrstuvwxyz]·]·.*·c·","r="+r)
+  }
+  
   test("createNFA") {
     var nfa = REParser.createNFA(REParser.post2re("ab.c."))
     nfa match {
@@ -208,6 +214,8 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     assert(REParser.matchNFA(re1,"c")==false)
   }
 
+    
+
   test("match SA basics") {
     val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
     sa.build()
@@ -307,6 +315,12 @@ class RE2Parser  extends FunSuite with RandomGenerator {
     assert(REParser.matchNFA(re1,"c")==true)
   }
 
+}
+class REAnalys extends FunSuite {
+  test("anal1") {
+    val re = REParser.re2post("a.*\\(b[a-z].*c")
+    println(re)
+  }
 }
 class ParalelSearch  extends FunSuite with RandomGenerator {
  test("ParalelSearch t2 dir") {
