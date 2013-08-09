@@ -242,6 +242,81 @@ object REParser {
         val SPLIT = 256
         val MATCH = 257
     }
+
+    object ReTree {
+      class Node {
+        var childs = List[Node]()
+      }
+      class CharNode(c:Char) extends Node 
+      class FollowNode extends Node {
+        def append(n:Node) {
+          childs::=n
+        }
+      }
+      def apply(postfix:PostfixRe) = {
+        val l = postfix.length
+        val root = new FollowNode()
+        val no = new ReTree(root)
+        var cur = root 
+        var i = 0
+        var args = new Stack[Node]()
+        while (i < l ) {
+          val c = postfix(i)
+          println("C=",c)
+          c match {
+            case cp:CharPoint => args.push(new CharNode(cp.c))
+            case cp:ConcatPoint => 
+              //cur.append(args.pop)
+              cur.append(args.pop)
+            case _ => 
+          }
+          i+=1
+        }
+        println(no.root)
+        no
+      }
+    }
+    class ReTree(var root:ReTree.FollowNode) {
+      type Node = ReTree.Node
+      def dotDump = {
+        var nodes = Set[Node]()
+        var front = List[Node](root)
+        while (! front.isEmpty) {
+          val node = front.head
+          front = front.tail
+          for (c <- node.childs ) {
+            if ( ! nodes.contains(c) ) {
+              front::=c
+              nodes +=c
+            }
+          }
+        }
+        val sb = new StringBuilder()
+        var nodeNames = Map[Node,String]()
+        var nameIdx = 0
+        def getName(n:Node) = {
+          nameIdx+=1
+          (n match {
+            case _:ReTree.FollowNode => "FollowNode"
+            //case _ => "Node"
+            case _ => "Node-"+n.toString
+          }) + nameIdx.toString
+        }
+        for (n <- nodes) {
+          val name = nodeNames.getOrElse(n,{ 
+            getName(n)
+          })
+          sb++=(name + "\n" )
+          for (c <- n.childs) {
+            val name2 = nodeNames.getOrElse(c,{ 
+              getName(c)
+            })
+            sb++=(name + " -> " + name2 + "\n")
+          }
+        }
+        sb.toString
+      }
+    }
     def createNFA(postfix:PostfixRe):BaseState = {
         val l = postfix.length
         case class Frag(start:State,out:List[State]=List()) {

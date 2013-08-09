@@ -318,8 +318,9 @@ class RE2Parser  extends FunSuite with RandomGenerator {
 }
 class REAnalys extends FunSuite {
   test("anal1") {
-    val re = REParser.re2post("a.*\\(b[a-z].*c")
-    println(re)
+    val re = REParser.re2post("abcd")
+    val t = REParser.ReTree(re)
+    println(t.dotDump)
   }
 }
 class ParalelSearch  extends FunSuite with RandomGenerator {
