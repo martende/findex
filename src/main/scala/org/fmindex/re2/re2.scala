@@ -247,40 +247,77 @@ object REParser {
       class Node {
         var childs = List[Node]()
       }
-      class CharNode(c:Char) extends Node 
+      class CharNode(var c:Char) extends Node {
+        override def toString = "["+c+"]"
+      }
+      class CharList(var c:List[Char]) extends Node {
+        override def toString = "["+c.mkString(",")+"]"
+      }
+
       class FollowNode extends Node {
+        override def toString = "F[" + childs.mkString(",") + "]"
         def append(n:Node) {
-          childs::=n
+          childs match {
+            case Nil => childs::=n
+            case x :: tail => x match {
+              case c1:CharNode => n match {
+                case c2:CharNode => childs = new CharList(List(c2.c,c1.c)) :: tail
+              }
+              case c1:CharList => n match {
+                case c2:CharNode => c1.c ::= c2.c
+              }
+            }
+          }
+          
         }
       }
       def apply(postfix:PostfixRe) = {
         val l = postfix.length
-        val root = new FollowNode()
-        val no = new ReTree(root)
-        var cur = root 
         var i = 0
         var args = new Stack[Node]()
+        println(postfix)
         while (i < l ) {
           val c = postfix(i)
-          println("C=",c)
           c match {
             case cp:CharPoint => args.push(new CharNode(cp.c))
             case cp:ConcatPoint => 
-              //cur.append(args.pop)
-              cur.append(args.pop)
+              val a2 = args.pop
+              val a1 = args.pop
+              (a1,a2) match {
+                case (x1 : CharNode,x2 : CharNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : FollowNode,x2 : CharNode) => 
+                  x1.append(x2)
+                  args.push(x1)
+              }
             case _ => 
           }
+          println(""+i+ "/"+l+". C="+c+" STACK="+args)
           i+=1
         }
-        println(no.root)
+        val no = new ReTree(args.pop match {
+          case x:FollowNode => x
+          case x => throw new Exception("Nonfollow Stack End"+x)
+        })
+
         no
       }
     }
     class ReTree(var root:ReTree.FollowNode) {
       type Node = ReTree.Node
+      def showDot() {
+        val output = new java.io.FileOutputStream("/tmp/file.dot")
+        output.write(dotDump.getBytes)
+        output.close()
+        Runtime.getRuntime.exec("dotty /tmp/file.dot")
+      }
       def dotDump = {
-        var nodes = Set[Node]()
+        var nodes = Set[Node](root)
         var front = List[Node](root)
+
         while (! front.isEmpty) {
           val node = front.head
           front = front.tail
@@ -292,6 +329,7 @@ object REParser {
           }
         }
         val sb = new StringBuilder()
+        sb++="digraph G { \n"
         var nodeNames = Map[Node,String]()
         var nameIdx = 0
         def getName(n:Node) = {
@@ -303,17 +341,19 @@ object REParser {
           }) + nameIdx.toString
         }
         for (n <- nodes) {
-          val name = nodeNames.getOrElse(n,{ 
+          val name = nodeNames.getOrElseUpdate(n,{ 
             getName(n)
           })
-          sb++=(name + "\n" )
+          sb++=("\"" + name + "\"" + "\n" )
           for (c <- n.childs) {
-            val name2 = nodeNames.getOrElse(c,{ 
+            val name2 = nodeNames.getOrElseUpdate(c,{ 
               getName(c)
             })
-            sb++=(name + " -> " + name2 + "\n")
+            sb++=("\"" + name +"\"" + " -> " +"\""+ name2 + "\""+"\n")
           }
         }
+        sb++="}\n"
+        println("dotDump--------------",sb.toString,"----------------")
         sb.toString
       }
     }

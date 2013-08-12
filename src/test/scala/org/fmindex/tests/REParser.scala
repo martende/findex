@@ -321,6 +321,7 @@ class REAnalys extends FunSuite {
     val re = REParser.re2post("abcd")
     val t = REParser.ReTree(re)
     println(t.dotDump)
+    t.showDot()
   }
 }
 class ParalelSearch  extends FunSuite with RandomGenerator {
