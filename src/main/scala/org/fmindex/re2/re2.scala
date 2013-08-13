@@ -45,15 +45,20 @@ object REParser {
     val s = Stack[Paren]()
     var quoted = false;
     
-    def processChar(c:Char) {
+    def processChar(c:Char,quoted:Boolean) {
       if(natom > 1){
         natom-=1
         dst = (new ConcatPoint())  :: dst
       }
-      dst = (c match {
+      dst::= (if (quoted) c match {
+        case 'w' => new IntervalPoint('A','z')
+        case 'd' => new IntervalPoint('0','9')
+        case _ =>  new CharPoint(c)
+      } else c match {
         case '.' => new IntervalPoint(MIN_CHAR,MAX_CHAR)
         case _ =>  new CharPoint(c)
-      } ) :: dst
+      })
+      
       natom+=1
     }
     def processAltChar(_i:Int) = {
@@ -98,7 +103,7 @@ object REParser {
       dst = (new AltPoint(alts)) :: dst
       natom+=1
 
-      i - 1
+      i 
     }
 
     while ( i< l) {
@@ -147,9 +152,9 @@ object REParser {
           }       )
 
         case _   =>
-          processChar(c)
+          processChar(c,false)
       } else {
-        processChar(c)
+        processChar(c,true)
         quoted = false
       }
       i+=1
@@ -253,64 +258,275 @@ object REParser {
       class CharList(var c:List[Char]) extends Node {
         override def toString = "["+c.mkString(",")+"]"
       }
+      class UnarOpNode extends Node
+      class StarNode extends UnarOpNode {
+        def append(n:Node) = {
+          assert(childs.isEmpty)
+          childs::=n
+        }
+        override def toString = "*["+childs.mkString(",")+"]"
+      }
+      class QuestionNode extends UnarOpNode {
+        def append(n:Node) = {
+          assert(childs.isEmpty)
+          childs::=n
+        }
+        override def toString = "?["+childs.mkString(",")+"]"
+      }
 
-      class FollowNode extends Node {
-        override def toString = "F[" + childs.mkString(",") + "]"
-        def append(n:Node) {
-          childs match {
-            case Nil => childs::=n
-            case x :: tail => x match {
-              case c1:CharNode => n match {
-                case c2:CharNode => childs = new CharList(List(c2.c,c1.c)) :: tail
-              }
-              case c1:CharList => n match {
-                case c2:CharNode => c1.c ::= c2.c
-              }
-            }
+
+      class PlusNode extends UnarOpNode {
+        def append(n:Node) = {
+          assert(childs.isEmpty)
+          childs::=n
+        }
+        override def toString = "+["+childs.mkString(",")+"]"
+      }
+      
+      class OrNode() extends Node {
+        def append(n:Node) = {
+          n match {
+            case on:OrNode => childs:::=on.childs
+            case _ => childs::=n
           }
           
         }
+        override def toString = "O["+childs.mkString("|")+"]"
       }
-      def apply(postfix:PostfixRe) = {
+      
+      class FollowNode extends Node {
+        override def toString = "F[" + childs.mkString(",") + "]"
+        def append(n:Node) {
+          n match {
+            case ns:UnarOpNode => childs ::= ns
+            case ns:OrNode => childs ::= ns            
+            case _ => childs match {
+              case Nil => childs::=n
+              case x :: tail => x match {
+                case c1:CharNode => n match {
+                  case c2:CharNode => childs = new CharList(List(c2.c,c1.c)) :: tail
+                }
+                case c1:CharList => n match {
+                  case c2:CharNode => c1.c ::= c2.c
+                }
+                case c1:UnarOpNode => childs ::= n
+                case c1:OrNode   => childs ::= n
+              }
+            }
+          }
+        }
+      }
+      def apply(postfix:PostfixRe,verbose:Boolean=false) = {
         val l = postfix.length
         var i = 0
         var args = new Stack[Node]()
+
         println(postfix)
         while (i < l ) {
           val c = postfix(i)
           c match {
+            case cp:IntervalPoint => 
+              val el = new OrNode()
+              var j = cp.start.toInt
+              var end = cp.end.toInt
+              while (j < end) {
+                el.append(new CharNode(j.toChar))
+                j+=1
+              }
+              args.push(el)
+            case cp:AltPoint  => 
+              val el = new OrNode()
+              for (c <- cp.alts) {
+                el.append(new CharNode(c))
+              }
+              args.push(el)
             case cp:CharPoint => args.push(new CharNode(cp.c))
+            case cp:OrPoint   => 
+              val a2 = args.pop
+              val a1 = args.pop
+              (a1,a2) match {
+                case (x1 : CharNode,x2 : OrNode)   => 
+                  x2.append(a1)
+                  args.push(x2)
+                case (x1 : UnarOpNode,x2 : OrNode)   => 
+                  x2.append(a1)
+                  args.push(x2)
+
+                //case (x1 : FollowNode,x2 : OrNode)   => 
+                //  x2.append(a1)
+                //  args.push(x2)
+
+                case (x1 : CharNode,x2 : CharNode)   => 
+                  val el = new OrNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : UnarOpNode,x2 : FollowNode)   => 
+                  val el = new OrNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : UnarOpNode,x2 : CharNode)   => 
+                  val el = new OrNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : OrNode,x2 : OrNode)   => 
+                  x2.append(a1)
+                  args.push(x2)
+                case _ => 
+                  if (verbose)
+                    println("Error!!! "+i+ "/"+l+". C="+c+" STACK="+args)
+                  throw new MatchError("OrPoint have no match for a1=%s a2=%s".format(a1,a2))
+              }
             case cp:ConcatPoint => 
               val a2 = args.pop
               val a1 = args.pop
               (a1,a2) match {
+                case (x1 : CharNode,x2 : OrNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
                 case (x1 : CharNode,x2 : CharNode)   => 
                   val el = new FollowNode()
                   el.append(a1)
                   el.append(a2)
                   args.push(el)
+                case (x1 : UnarOpNode,x2 : CharNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : UnarOpNode,x2 : OrNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : CharNode,x2 : UnarOpNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+                case (x1 : UnarOpNode,x2 : UnarOpNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
+
+                //TODO:  Mix in one case
                 case (x1 : FollowNode,x2 : CharNode) => 
                   x1.append(x2)
                   args.push(x1)
+                case (x1 : FollowNode,x2 : UnarOpNode) => 
+                  x1.append(x2)
+                  args.push(x1)
+                case _ => 
+                  if (verbose)
+                    println("Error!!! "+i+ "/"+l+". C="+c+" STACK="+args)
+                  throw new MatchError("ConcatPoint have no match for a1=%s a2=%s".format(a1,a2))
               }
-            case _ => 
+            case cp:PlusPoint => 
+              val a1 = args.pop
+              a1 match {
+                case x:StarNode => args.push(a1)
+                case x:QuestionNode => val el = new StarNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case x:PlusNode => val el = new StarNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case _ => val el = new PlusNode()
+                  el.append(a1)
+                  args.push(el)
+              }
+            case cp:StarPoint => 
+              val a1 = args.pop
+              a1 match {
+                case x:StarNode => args.push(a1)
+                case x:QuestionNode => val el = new StarNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case x:PlusNode => val el = new StarNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case _ => val el = new StarNode()
+                  el.append(a1)
+                  args.push(el)
+              }
+            case cp:QuestionPoint => 
+              val a1 = args.pop
+              a1 match {
+                case x:QuestionNode => val el = new QuestionNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case x:StarNode => args.push(a1)
+                case x:PlusNode => val el = new StarNode()
+                  el.append(x.childs.head)
+                  args.push(el)
+                case _ => val el = new QuestionNode()
+                  el.append(a1)
+                  args.push(el)
+              }
           }
-          println(""+i+ "/"+l+". C="+c+" STACK="+args)
+          if (verbose)
+            println(""+i+ "/"+l+". C="+c+" STACK="+args)
           i+=1
         }
         val no = new ReTree(args.pop match {
           case x:FollowNode => x
+          case x:OrNode => 
+            val el = new FollowNode()
+            el.append(x)
+            el
+          case x:UnarOpNode  => 
+            val el = new FollowNode()
+            el.append(x)
+            el
           case x => throw new Exception("Nonfollow Stack End"+x)
         })
 
+        // Post processing 
+
+        removePlusNode(no)
         no
+      }
+      def removePlusNode(r:ReTree):ReTree = {
+        def processed(r:Node) = {
+          r match {
+            case c:CharNode => c
+            case c:CharList => c
+            case c:FollowNode => 
+              val nc = new FollowNode()
+              for (chld <- c.childs) {
+                nc.append(processed(chld))
+              }
+            case c:OrNode =>
+              val nc = new FollowNode()
+              for (chld <- c.childs) {
+                nc.append(processed(chld))
+              }
+            case c:PlusNode =>
+              val nc = new FollowNode()
+              for (chld <- c.childs) {
+                nc.append(processed(chld))
+              }
+            case c:StarNode =>
+              val nc = new FollowNode()
+              for (chld <- c.childs) {
+                nc.append(processed(chld))
+              }
+          }
+        }
       }
     }
     class ReTree(var root:ReTree.FollowNode) {
       type Node = ReTree.Node
       def showDot() {
         val output = new java.io.FileOutputStream("/tmp/file.dot")
+        output.write("digraph G {\ngraph [ordering=\"out\"];\n".getBytes)
         output.write(dotDump.getBytes)
+        output.write("}".getBytes)
         output.close()
         Runtime.getRuntime.exec("dotty /tmp/file.dot")
       }
@@ -329,13 +545,15 @@ object REParser {
           }
         }
         val sb = new StringBuilder()
-        sb++="digraph G { \n"
+        
         var nodeNames = Map[Node,String]()
         var nameIdx = 0
         def getName(n:Node) = {
           nameIdx+=1
           (n match {
             case _:ReTree.FollowNode => "FollowNode"
+            case _:ReTree.StarNode => "StarNode"
+            case _:ReTree.OrNode => "OrNode"
             //case _ => "Node"
             case _ => "Node-"+n.toString
           }) + nameIdx.toString
@@ -352,8 +570,7 @@ object REParser {
             sb++=("\"" + name +"\"" + " -> " +"\""+ name2 + "\""+"\n")
           }
         }
-        sb++="}\n"
-        println("dotDump--------------",sb.toString,"----------------")
+        
         sb.toString
       }
     }
