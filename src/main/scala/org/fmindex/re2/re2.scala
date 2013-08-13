@@ -473,7 +473,9 @@ object REParser {
             println(""+i+ "/"+l+". C="+c+" STACK="+args)
           i+=1
         }
-        val no = new ReTree(args.pop match {
+        val a1 = postProcess(args.pop)
+
+        val no = new ReTree(a1 match {
           case x:FollowNode => x
           case x:OrNode => 
             val el = new FollowNode()
@@ -486,39 +488,37 @@ object REParser {
           case x => throw new Exception("Nonfollow Stack End"+x)
         })
 
-        // Post processing 
-
-        removePlusNode(no)
         no
       }
-      def removePlusNode(r:ReTree):ReTree = {
-        def processed(r:Node) = {
-          r match {
-            case c:CharNode => c
-            case c:CharList => c
-            case c:FollowNode => 
-              val nc = new FollowNode()
-              for (chld <- c.childs) {
-                nc.append(processed(chld))
-              }
-            case c:OrNode =>
-              val nc = new FollowNode()
-              for (chld <- c.childs) {
-                nc.append(processed(chld))
-              }
-            case c:PlusNode =>
-              val nc = new FollowNode()
-              for (chld <- c.childs) {
-                nc.append(processed(chld))
-              }
-            case c:StarNode =>
-              val nc = new FollowNode()
-              for (chld <- c.childs) {
-                nc.append(processed(chld))
-              }
+      def postProcess(r:Node):Node = r match {
+        case c:CharNode => c
+        case c:CharList => c
+        case c:FollowNode => 
+          val nc = new FollowNode()
+          //for (chld <- c.childs) {
+          //  nc.childs ::= postProcess(chld)
+          //}
+          nc
+        case c:OrNode =>
+          val nc = new OrNode()
+          for (chld <- c.childs) {
+            nc.append(postProcess(chld))
           }
-        }
+          nc          
+        case c:PlusNode =>
+          val nc = new PlusNode()
+          for (chld <- c.childs) {
+            nc.append(postProcess(chld))
+          }
+          nc          
+        case c:StarNode =>
+          val nc = new StarNode()
+          for (chld <- c.childs) {
+            nc.append(postProcess(chld))
+          }
+          nc          
       }
+
     }
     class ReTree(var root:ReTree.FollowNode) {
       type Node = ReTree.Node
