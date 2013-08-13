@@ -319,155 +319,178 @@ class RE2Parser  extends FunSuite with RandomGenerator {
 class REAnalys extends FunSuite {
   test("anal1") {
     val re = REParser.re2post("abcd")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }
   test("anal2") {
     val re = REParser.re2post("abcd*")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }  
 
   test("anal3") {
     val re = REParser.re2post("abc*d")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }  
 
   test("anal4") {
     val re = REParser.re2post("a*bcd")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }
 
   test("anal5") {
     val re = REParser.re2post("a*b*c*d*")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }  
 
   test("anal6") {
     val re = REParser.re2post("(ab)*")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }
 
   test("anal7") {
     val re = REParser.re2post("(ab)*cd")
-    val t = REParser.ReTree(re)
-    println(t.dotDump)
+    val t = ReTree(re)
+    //println(t.dotDump)
   }  
   test("anal8") {
     val re = REParser.re2post("(ab)*(cd*)*")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal9") {
     val re = REParser.re2post("(a|b)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }  
   test("anal10") {
     val re = REParser.re2post("(a|b|d|c)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal11") {
     val re = REParser.re2post("(a|b*|d|c)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal12") {
     val re = REParser.re2post("(a|b*|d|c)*|(abc)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal13") {
     val re = REParser.re2post("(a|b|c)|(c|d|e)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal14") {
     val re = REParser.re2post("[a-c]")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal15") {
     val re = REParser.re2post("a[b-d]e")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal16") {
     val re = REParser.re2post("a[b-d]*e")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal17") {
     val re = REParser.re2post("a[x.]e")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal18") {
     val re = REParser.re2post("a\\de")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal19") {
     val re = REParser.re2post("a+")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal20") {
     val re = REParser.re2post("a****")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal21") {
     val re = REParser.re2post("a+b")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal22") {
     val re = REParser.re2post("a+((b|c)+|d)")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal23") {
     val re = REParser.re2post("a*+")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal24") {
     val re = REParser.re2post("a+*")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal25") {
     val re = REParser.re2post("a+*+*++*")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal26") {
     val re = REParser.re2post("a?")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal27") {
     val re = REParser.re2post("(abc)?+|a?|bcd")
-    val t = REParser.ReTree(re,verbose=false)
-    println(t.dotDump)
+    val t = ReTree(re,verbose=false)
+    //println(t.dotDump)
   }
   test("anal28") {
     val re = REParser.re2post("ab(cd|ef)+gh")
-    val t = REParser.ReTree(re,verbose=false)
+    val t = ReTree(re,verbose=false)
     //t.showDot()
   }
   test("anal29") {
     val re = REParser.re2post("(10\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5]\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5]\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5])")
-    val t = REParser.ReTree(re,verbose=false)
-    t.showDot()
+    val t = ReTree(re,verbose=false)
+    
+    //t.showDot()
+  }
+  test("anal30") {
+    val re = REParser.re2post("ab(cd)*ef")
+    val t = ReTree(re)
+    //t.showDot()
+    //println(t.dotDump)
   }
 }
+
+class REAnalys2  extends FunSuite with RandomGenerator {
+  test("anal1") {
+    val re = REParser.re2post("a")
+    val t = ReTree(re)
+    assert(t.root.parent.toString=="<<<ROOT>>>")
+    assert(t.root.childs.head.parent.toString=="F[[a]]")
+  }
+  test("anal2") {
+    val re = REParser.re2post("ab*")
+    val t = ReTree(re)
+    println(t.root.childs.tail.head.childs.head.parent)
+    assert(t.root.childs.tail.head.childs.head.parent.toString=="*[[b]]")
+  }  
+}
+
 class ParalelSearch  extends FunSuite with RandomGenerator {
  test("ParalelSearch t2 dir") {
   import Util._
