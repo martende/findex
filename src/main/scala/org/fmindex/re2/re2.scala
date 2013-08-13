@@ -352,9 +352,15 @@ object REParser {
                   x2.append(a1)
                   args.push(x2)
 
-                //case (x1 : FollowNode,x2 : OrNode)   => 
-                //  x2.append(a1)
-                //  args.push(x2)
+                case (x1 : FollowNode,x2 : OrNode)   => 
+                  x2.append(a1)
+                  args.push(x2)
+
+                case (x1 : FollowNode,x2 : FollowNode)   => 
+                  val el = new OrNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
 
                 case (x1 : CharNode,x2 : CharNode)   => 
                   val el = new OrNode()
@@ -383,6 +389,11 @@ object REParser {
               val a2 = args.pop
               val a1 = args.pop
               (a1,a2) match {
+                case (x1 : OrNode,x2 : OrNode)   => 
+                  val el = new FollowNode()
+                  el.append(a1)
+                  el.append(a2)
+                  args.push(el)
                 case (x1 : CharNode,x2 : OrNode)   => 
                   val el = new FollowNode()
                   el.append(a1)
@@ -418,6 +429,10 @@ object REParser {
                 case (x1 : FollowNode,x2 : CharNode) => 
                   x1.append(x2)
                   args.push(x1)
+                case (x1 : FollowNode,x2 : OrNode) => 
+                  x1.append(x2)
+                  args.push(x1)
+
                 case (x1 : FollowNode,x2 : UnarOpNode) => 
                   x1.append(x2)
                   args.push(x1)
@@ -490,34 +505,50 @@ object REParser {
 
         no
       }
-      def postProcess(r:Node):Node = r match {
-        case c:CharNode => c
-        case c:CharList => c
-        case c:FollowNode => 
-          val nc = new FollowNode()
-          //for (chld <- c.childs) {
-          //  nc.childs ::= postProcess(chld)
-          //}
-          nc
-        case c:OrNode =>
-          val nc = new OrNode()
-          for (chld <- c.childs) {
-            nc.append(postProcess(chld))
-          }
-          nc          
-        case c:PlusNode =>
-          val nc = new PlusNode()
-          for (chld <- c.childs) {
-            nc.append(postProcess(chld))
-          }
-          nc          
-        case c:StarNode =>
-          val nc = new StarNode()
-          for (chld <- c.childs) {
-            nc.append(postProcess(chld))
-          }
-          nc          
+      def postProcess(r:Node):Node = {
+        def processChild(newL:List[Node],oldC:Node) = oldC match {
+          case x:PlusNode => 
+            var a1 = postProcess(x.childs.head)
+            var a2 = new StarNode()
+            a2.append(postProcess(x.childs.head))
+            a1 :: a2 :: newL
+          case _=> postProcess(oldC) :: newL
+        }
+        r match {
+          case c:CharNode => new CharNode(c.c)
+          case c:CharList => new CharList(c.c.reverse)
+          case c:FollowNode => 
+            val nc = new FollowNode()
+            for (chld <- c.childs) {
+              nc.childs = processChild(nc.childs,chld)
+            }
+            nc
+          case c:QuestionNode =>
+            val nc = new QuestionNode()
+            for (chld <- c.childs) {
+              nc.childs = processChild(nc.childs,chld)
+            }
+            nc
+          case c:OrNode =>
+            val nc = new OrNode()
+            for (chld <- c.childs) {
+              nc.childs = processChild(nc.childs,chld)
+            }
+            nc          
+          case c:PlusNode =>
+            val nc = new PlusNode()
+            for (chld <- c.childs) {
+              nc.childs = processChild(nc.childs,chld)
+            }
+            nc          
+          case c:StarNode =>
+            val nc = new StarNode()
+            for (chld <- c.childs) {
+              nc.childs = processChild(nc.childs,chld)
+            }
+            nc
       }
+    }
 
     }
     class ReTree(var root:ReTree.FollowNode) {

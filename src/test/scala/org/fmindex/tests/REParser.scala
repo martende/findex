@@ -455,6 +455,16 @@ class REAnalys extends FunSuite {
   test("anal27") {
     val re = REParser.re2post("(abc)?+|a?|bcd")
     val t = REParser.ReTree(re,verbose=false)
+    println(t.dotDump)
+  }
+  test("anal28") {
+    val re = REParser.re2post("ab(cd|ef)+gh")
+    val t = REParser.ReTree(re,verbose=false)
+    //t.showDot()
+  }
+  test("anal29") {
+    val re = REParser.re2post("(10\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5]\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5]\\.[0-9]|[1-9][0-9]|[1-2][0-5][0-5])")
+    val t = REParser.ReTree(re,verbose=false)
     t.showDot()
   }
 }
