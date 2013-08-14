@@ -11,7 +11,31 @@ object ReTree {
     def append(n:Node)
     var childs = List[Node]()
     var parent:Node = RootNode
-    var follows = List[Node]()
+    lazy val follows:List[Node] = {
+      parent match {
+        case RootNode => List()
+        case x:OrNode => x.follows
+        case x:FollowNode => 
+          var last = x.childs.dropWhile(_!=this).tail
+          if ( ! last.isEmpty ) {
+            var ret = last.head.firsts
+            if ( last.head.isNull ) {
+              last = last.tail
+              while (! last.isEmpty && last.head.isNull) {
+                ret :::= last.head.firsts
+                last = last.tail
+              }
+              if (! last.isEmpty) {
+                ret :::= last.head.firsts
+              }
+            }
+            ret 
+          } else x.follows
+        case x:StarNode     => firsts ::: x.follows
+        case x:QuestionNode => /*firsts :::*/ x.follows
+        case _ => List()
+      }
+    }
     val isNull:Boolean
     val firsts:List[Node]
   }
@@ -25,6 +49,7 @@ object ReTree {
 
   class CharNode(var c:Char) extends Node {
     def append(n:Node) = ???
+    var num = 0
     lazy val isNull = false
     lazy val firsts = List(this)
     override def toString = "["+c+"]"
@@ -116,7 +141,7 @@ object ReTree {
     }
     */
   }
-  def apply(postfix:REParser.PostfixRe,verbose:Boolean=false) = {
+  def apply(postfix:REParser.PostfixRe,verbose:Boolean=false,removeNulls:Boolean=true) = {
     val l = postfix.length
     var i = 0
     var args = new Stack[Node]()
@@ -317,13 +342,29 @@ object ReTree {
       case x => throw new Exception("Nonfollow Stack End"+x)
     }
 
-    val a1 =  postProcess(a2).asInstanceOf[FollowNode]
+    val a1 = postProcess(a2).asInstanceOf[FollowNode]
+    val a3 = if ( removeNulls ) removeBorderNulls(a1) else a1
 
-    setParents(a1,RootNode)
-    
+    setParents(a3,RootNode)
+    setNums(a3)
 
-    val no = new ReTree(a1)
+    val no = new ReTree(a3.asInstanceOf[FollowNode])
     no
+  }
+  def removeBorderNulls(a1:FollowNode):FollowNode = {
+    val n = new FollowNode()
+    var p = a1.childs
+    while (! p.isEmpty && p.head.isNull ) p = p.tail
+
+    p = p.reverse
+
+    while(! p.isEmpty && p.head.isNull ) p = p.tail
+
+    while(! p.isEmpty ) {
+      n.append(p.head)
+      p = p.tail
+    }
+    n
   }
   def setParents(r:Node,parent:Node=RootNode) {
     r.parent=parent
@@ -331,7 +372,18 @@ object ReTree {
       setParents(chld,r)
     }
   }
-
+  def setNums(r:Node) {
+    var idx = 1
+    def _setNums(r:Node) {
+      for (chld <- r.childs) {
+        chld match {
+          case x:CharNode => x.num = idx;idx+=1
+          case _ => _setNums(chld)
+        }
+      }
+    }
+    _setNums(r)
+  }
   def postProcess(r:Node,parent:Node=RootNode):Node = {
     def processChild(newL:List[Node],oldC:Node) = oldC match {
       case x:PlusNode => 
@@ -380,15 +432,15 @@ object ReTree {
 }
 class ReTree(var root:ReTree.FollowNode) {
   type Node = ReTree.Node
-  def showDot() {
+  def showDot(showFirsts:Boolean=false,showNums:Boolean=true,showFollows:Boolean=false) {
     val output = new java.io.FileOutputStream("/tmp/file.dot")
-    output.write("digraph G {\ngraph [ordering=\"out\"];\n".getBytes)
-    output.write(dotDump.getBytes)
+    output.write("digraph G {\ngraph [ordering=\"out\" splines=true];\n".getBytes)
+    output.write(dotDump(showFirsts,showNums,showFollows).getBytes)
     output.write("}".getBytes)
     output.close()
     Runtime.getRuntime.exec("dotty /tmp/file.dot")
   }
-  def dotDump = {
+  def dotDump(showFirsts:Boolean=false,showNums:Boolean=true,showFollows:Boolean=false) = {
     var nodes = Set[Node](root)
     var front = List[Node](root)
 
@@ -403,6 +455,7 @@ class ReTree(var root:ReTree.FollowNode) {
       }
     }
     val sb = new StringBuilder()
+    val sb2 = new StringBuilder()
     val nb = new StringBuilder()
     var nodeNames = Map[Node,String]()
     var nameIdx = 0
@@ -420,20 +473,37 @@ class ReTree(var root:ReTree.FollowNode) {
       val name = nodeNames.getOrElseUpdate(n,{ 
         getName(n)
       })
-        val label = n match {
-          case c:ReTree.CharNode => c.c
-          case _ => name
-        }
-        nb++=("node[style=%s,label=%s] \"%s\";\n".format((if (n.isNull) "solid" else "filled" ),label,name))
+        val label = (n match {
+          case c:ReTree.CharNode => c.c + (if (showNums) "\\n"+c.num else "")
+          case _ => name + (if (showFirsts) "\\n"+n.firsts.mkString(",") else "")
+        } ) 
+        val shape = (n match {
+          case c:ReTree.CharNode => "circle"
+          case _ => "box"
+        } )
+        nb++=("node[shape=%s,style=%s,label=\"%s\"] \"%s\";\n".format(shape,(if (n.isNull) "solid" else "filled" ),label,name))
         
       for (c <- n.childs) {
         val name2 = nodeNames.getOrElseUpdate(c,{ 
           getName(c)
         })
-        sb++=("\"" + name +"\"" + " -> " +"\""+ name2 + "\""+"\n")
+        sb++=("\"" + name +"\"" + " -> " +"\""+ name2 + "\""+" [weight=100000]" +";\n")
       }
+      if ( showFollows ) {
+        n match {
+          case c:ReTree.CharNode => 
+            for (c <- c.follows) {
+              val name2 = nodeNames.getOrElseUpdate(c,{ 
+                getName(c)
+              })
+              sb2++=("\"" + name +"\"" + " -> " +"\""+ name2 + "\""+" [style=dotted weight=1]" +";\n")
+            }
+          case _ => 
+        }
+      }
+      
     }
     
-    nb.toString + sb.toString
+    nb.toString + sb.toString + sb2.toString
   }
 }

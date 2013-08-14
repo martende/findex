@@ -486,15 +486,87 @@ class REAnalys2  extends FunSuite with RandomGenerator {
   }
   test("anal2") {
     val re = REParser.re2post("ab*")
-    val t = ReTree(re)
+    val t = ReTree(re,removeNulls=false)
     //println(t.root.childs.tail.head.childs.head.parent)
     //println(t.root.childs.head.childs.head.parent)
     assert(t.root.childs.tail.head.childs.head.parent.toString=="*[[b]]")
-  }  
+  }
+  test("anal2.1") {
+    val re = REParser.re2post("a*(b|a)*bB*cd*e*")
+    val t = ReTree(re,removeNulls=true)
+    assert(t.root.childs.length==3)
+    //println(t.root.childs.tail.head.childs.head.parent)
+    //println(t.root.childs.head.childs.head.parent)
+    //assert(t.root.childs.tail.head.childs.head.parent.toString=="*[[b]]")
+  }
+  test("anal2.2") {
+    val re = REParser.re2post("a*(b|a)*b?B*c?d*e*")
+    val t = ReTree(re,removeNulls=true)
+    assert(t.root.childs.length==0)
+    assert(t.root.isNull)
+    //println(t.root.childs.tail.head.childs.head.parent)
+    //println(t.root.childs.head.childs.head.parent)
+    //assert(t.root.childs.tail.head.childs.head.parent.toString=="*[[b]]")
+  }
   test("anal3") {
-    val re = REParser.re2post("ab(cd)*(m(k|l)|tm*)(a|abc)(a*|(abc)*)ef")
+    val re = REParser.re2post("abcdef")
     val t = ReTree(re)
-    t.showDot()
+    assert(t.root.childs(3).asInstanceOf[ReTree.CharNode].num==4)  
+  }
+
+  test("anal4.follows") {
+    val re = REParser.re2post("""abc(cde)*ef""")
+    val t = ReTree(re)
+    val F = t.root
+    assert(F.follows == List())
+    
+    val a = F.childs(0)
+    val b = F.childs(1)
+    val c = F.childs(2)
+    val cdeS = F.childs(3)
+    val e = F.childs(4)
+    val f = F.childs(5)
+    assert(a.follows == List(b))
+    assert(b.follows == List(c))
+    assert(cdeS.follows == List(e))
+    assert(e.follows == List(f))
+    assert(f.follows == List())
+    val cdeSF = cdeS.childs(0)
+    val cdeSFc = cdeSF.childs(0)
+    val cdeSFd = cdeSF.childs(1)
+    val cdeSFe = cdeSF.childs(2)
+    assert(cdeSF.follows == List(cdeSFc,e))
+    assert(cdeSFc.follows == List(cdeSFd))
+    assert(cdeSFd.follows == List(cdeSFe))
+    assert(cdeSFe.follows == List(cdeSFc,e))  
+  }
+
+  test("anal4.follows.star") {
+    val re = REParser.re2post("""ab*(cd)*(gh)*ij""")
+    val t = ReTree(re)
+
+    //t.showDot(showFirsts=true,showFollows=true)
+  }
+  test("anal4.follows.or.star") {
+    val re = REParser.re2post("""a(cd|ef)*j""")
+    val t = ReTree(re)
+
+    //t.showDot(showFirsts=true,showFollows=true)
+  }
+  test("anal4.follows.or.?") {
+    val re = REParser.re2post("""ab?j""")
+    val t = ReTree(re)
+    val F = t.root
+    assert(F.childs(1).isNull)
+
+    assert(F.childs(0).follows == List(F.childs(2),F.childs(1).childs(0)))
+    // t.showDot(showFirsts=true,showFollows=true)
+  }
+  test("anal100") {
+    val re = REParser.re2post(".*ab(cd)*(m(k|l)|tm*)(a|abc)(a*|(abc)*)ef(a*b*c*dg*)*gh")
+    val t = ReTree(re)
+    //println(t.root.firsts)
+    //t.showDot(showFirsts=true)
     //println(t.dotDump)
   }
 }
