@@ -410,6 +410,7 @@ class REAnalys extends FunSuite {
   test("anal18") {
     val re = REParser.re2post("a\\de")
     val t = ReTree(re,verbose=false)
+    //t.showDot()
     //println(t.dotDump)
   }
   test("anal19") {
@@ -486,9 +487,16 @@ class REAnalys2  extends FunSuite with RandomGenerator {
   test("anal2") {
     val re = REParser.re2post("ab*")
     val t = ReTree(re)
-    println(t.root.childs.tail.head.childs.head.parent)
+    //println(t.root.childs.tail.head.childs.head.parent)
+    //println(t.root.childs.head.childs.head.parent)
     assert(t.root.childs.tail.head.childs.head.parent.toString=="*[[b]]")
   }  
+  test("anal3") {
+    val re = REParser.re2post("ab(cd)*(m(k|l)|tm*)(a|abc)(a*|(abc)*)ef")
+    val t = ReTree(re)
+    t.showDot()
+    //println(t.dotDump)
+  }
 }
 
 class ParalelSearch  extends FunSuite with RandomGenerator {

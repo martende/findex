@@ -11,41 +11,54 @@ object ReTree {
     def append(n:Node)
     var childs = List[Node]()
     var parent:Node = RootNode
+    var follows = List[Node]()
+    val isNull:Boolean
+    val firsts:List[Node]
   }
   
   object RootNode extends Node {
     def append(n:Node) = ???
+    lazy val isNull = ???
+    lazy val firsts = ???
     override def toString = "<<<ROOT>>>"
   }
 
   class CharNode(var c:Char) extends Node {
     def append(n:Node) = ???
+    lazy val isNull = false
+    lazy val firsts = List(this)
     override def toString = "["+c+"]"
   }
   //class CharList(var c:List[Char]) extends Node {
   //  override def toString = "["+c.mkString(",")+"]"
   //}
-  class UnarOpNode extends Node {
+  trait UnarOpNode extends Node {
     override def append(n:Node) = {
       assert(childs.isEmpty)
       n.parent = this
       childs::=n
     }
+    lazy val firsts = childs.flatMap(_.firsts)
   }
 
   class StarNode extends UnarOpNode {
+    lazy val isNull = true
     override def toString = "*["+childs.mkString(",")+"]"
   }
   class QuestionNode extends UnarOpNode {
+    lazy val isNull = true
     override def toString = "?["+childs.mkString(",")+"]"
   }
 
 
   class PlusNode extends UnarOpNode {
+    lazy val isNull = childs.forall{_.isNull}
     override def toString = "+["+childs.mkString(",")+"]"
   }
   
   class OrNode() extends Node {
+    lazy val firsts = childs.flatMap(_.firsts)
+    lazy val isNull = childs.exists{_.isNull}
     def append(n:Node) = {
       n match {
         case on:OrNode =>
@@ -62,6 +75,20 @@ object ReTree {
   }
   
   class FollowNode extends Node {
+
+
+    lazy val firsts = {
+      var p = childs
+      var ret = List[Node]()
+      while (! p.isEmpty && p.head.isNull) {
+        ret :::=p.head.firsts
+        p = p.tail
+      }
+      if ( ! p.isEmpty ) ret :::=p.head.firsts
+
+      ret
+    }
+    lazy val isNull = childs.forall{_.isNull}
     override def toString = "F[" + childs.mkString(",") + "]"
     def append(n:Node) = {
       n.parent = this          
@@ -145,7 +172,17 @@ object ReTree {
               el.append(a1)
               el.append(a2)
               args.push(el)
+            case (x1 : CharNode,x2 : FollowNode)   => 
+              val el = new OrNode()
+              el.append(a1)
+              el.append(a2)
+              args.push(el)
             case (x1 : UnarOpNode,x2 : CharNode)   => 
+              val el = new OrNode()
+              el.append(a1)
+              el.append(a2)
+              args.push(el)
+            case (x1 : UnarOpNode,x2 : UnarOpNode)   => 
               val el = new OrNode()
               el.append(a1)
               el.append(a2)
@@ -261,9 +298,9 @@ object ReTree {
         println(""+i+ "/"+l+". C="+c+" STACK="+args)
       i+=1
     }
-    val a1 = postProcess(args.pop)
+    val a0 = args.pop
 
-    val a2 = a1 match {
+    val a2 = a0 match {
       case x:FollowNode => x
       case x:OrNode => 
         val el = new FollowNode()
@@ -280,9 +317,12 @@ object ReTree {
       case x => throw new Exception("Nonfollow Stack End"+x)
     }
 
-    setParents(a2,RootNode)
+    val a1 =  postProcess(a2).asInstanceOf[FollowNode]
 
-    val no = new ReTree(a2)
+    setParents(a1,RootNode)
+    
+
+    val no = new ReTree(a1)
     no
   }
   def setParents(r:Node,parent:Node=RootNode) {
@@ -291,6 +331,7 @@ object ReTree {
       setParents(chld,r)
     }
   }
+
   def postProcess(r:Node,parent:Node=RootNode):Node = {
     def processChild(newL:List[Node],oldC:Node) = oldC match {
       case x:PlusNode => 
@@ -321,12 +362,12 @@ object ReTree {
           nc.childs = processChild(nc.childs,chld)
         }
         nc          
-      case c:PlusNode =>
-        val nc = new PlusNode()
-        for (chld <- c.childs) {
-          nc.childs = processChild(nc.childs,chld)
-        }
-        nc          
+      //case c:PlusNode =>
+      //  val nc = new PlusNode()
+      //  for (chld <- c.childs) {
+      //    nc.childs = processChild(nc.childs,chld)
+      //  }
+      //  nc          
       case c:StarNode =>
         val nc = new StarNode()
         for (chld <- c.childs) {
@@ -362,7 +403,7 @@ class ReTree(var root:ReTree.FollowNode) {
       }
     }
     val sb = new StringBuilder()
-    
+    val nb = new StringBuilder()
     var nodeNames = Map[Node,String]()
     var nameIdx = 0
     def getName(n:Node) = {
@@ -379,7 +420,12 @@ class ReTree(var root:ReTree.FollowNode) {
       val name = nodeNames.getOrElseUpdate(n,{ 
         getName(n)
       })
-      sb++=("\"" + name + "\"" + "\n" )
+        val label = n match {
+          case c:ReTree.CharNode => c.c
+          case _ => name
+        }
+        nb++=("node[style=%s,label=%s] \"%s\";\n".format((if (n.isNull) "solid" else "filled" ),label,name))
+        
       for (c <- n.childs) {
         val name2 = nodeNames.getOrElseUpdate(c,{ 
           getName(c)
@@ -388,6 +434,6 @@ class ReTree(var root:ReTree.FollowNode) {
       }
     }
     
-    sb.toString
+    nb.toString + sb.toString
   }
 }
