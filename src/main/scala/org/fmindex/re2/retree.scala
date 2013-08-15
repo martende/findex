@@ -506,4 +506,8 @@ class ReTree(var root:ReTree.FollowNode) {
     
     nb.toString + sb.toString + sb2.toString
   }
+  def search(sa:SuffixWalkingAlgo,debugLevel:Int):List[SAResult] = {
+    def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
+    ???
+  }
 }

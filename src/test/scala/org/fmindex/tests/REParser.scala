@@ -562,12 +562,27 @@ class REAnalys2  extends FunSuite with RandomGenerator {
     assert(F.childs(0).follows == List(F.childs(2),F.childs(1).childs(0)))
     // t.showDot(showFirsts=true,showFollows=true)
   }
-  test("anal100") {
+  test("anal5") {
     val re = REParser.re2post(".*ab(cd)*(m(k|l)|tm*)(a|abc)(a*|(abc)*)ef(a*b*c*dg*)*gh")
     val t = ReTree(re)
     //println(t.root.firsts)
     //t.showDot(showFirsts=true)
     //println(t.dotDump)
+  }
+}
+
+class REAnalys3  extends FunSuite with RandomGenerator {
+  import Util._
+  test("anal5") {
+    val re = REParser.re2post(".*abc")
+    val t = ReTree(re)
+    
+    val sa = new SAISBuilder(new ByteArrayNulledWrapper("mmabcacamabbbca".getBytes.reverse))
+    sa.build()
+    sa.buildOCC
+    //var re1 = REParser.createNFA(REParser.post2re("ma.b."))
+    //val results = REParser.matchSA(re1,sa,debugLevel=0)
+    //assert(results(0).toString == "[2 Results] bam")
   }
 }
 

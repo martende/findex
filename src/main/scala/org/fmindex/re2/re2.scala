@@ -6,6 +6,17 @@ import org.fmindex.LCPSuffixWalkingAlgo
 import scala.collection.mutable.Map
 import scala.collection.mutable.PriorityQueue
 
+case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
+  val cnt = ep - sp
+  lazy val strResult:String = 
+    if ( cnt ==1 ) 
+      sa.nextSubstr(sp,len)
+    else if ( cnt > 0) 
+      "["+cnt + " Results] " + sa.nextSubstr(sp,len)
+    else
+      "[no results]" 
+  override def toString = strResult
+}
 object REParser {
   val MIN_CHAR=2.toChar
   val MAX_CHAR=255.toChar
@@ -471,17 +482,7 @@ object REParser {
       }
     }
     case class SATip(state:BaseState,len:Int,sp:Int,ep:Int)
-    case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
-        val cnt = ep - sp
-        lazy val strResult:String = 
-          if ( cnt ==1 ) 
-            sa.nextSubstr(sp,len)
-          else if ( cnt > 0) 
-            "["+cnt + " Results] " + sa.nextSubstr(sp,len)
-          else
-            "[no results]" 
-        override def toString = strResult
-    }
+    
 
     def paralelSearch(nfa:BaseState,lcpa:LCPSuffixWalkingAlgo, debugLevel:Int=0,maxIterations:Int=0,maxLength:Int=0) = {
       def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("paralelSearch: " +s).format(xs: _*))
