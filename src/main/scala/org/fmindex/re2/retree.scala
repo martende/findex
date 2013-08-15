@@ -11,7 +11,7 @@ object ReTree {
     def append(n:Node)
     var childs = List[Node]()
     var parent:Node = RootNode
-    lazy val follows:List[Node] = {
+    lazy val follows:List[CharNode] = {
       parent match {
         case RootNode => List()
         case x:OrNode => x.follows
@@ -36,8 +36,20 @@ object ReTree {
         case _ => List()
       }
     }
+
+    lazy val isLast:Boolean = {
+      parent match {
+        case RootNode => true
+        case _:OrNode => parent.isLast
+        case _:UnarOpNode => parent.isLast
+        case x:FollowNode => 
+          var last = x.childs.dropWhile(_!=this).tail
+          if ( last.isEmpty || last.forall(_.isNull) ) parent.isLast else false
+        case _ => true
+      }
+    }
     val isNull:Boolean
-    val firsts:List[Node]
+    val firsts:List[CharNode]
   }
   
   object RootNode extends Node {
@@ -52,7 +64,7 @@ object ReTree {
     var num = 0
     lazy val isNull = false
     lazy val firsts = List(this)
-    override def toString = "["+c+"]"
+    override def toString = if (c >= 0x20 && c < 0x7f) "%c".format(c) else "%02x".format(c.toInt)
   }
   //class CharList(var c:List[Char]) extends Node {
   //  override def toString = "["+c.mkString(",")+"]"
@@ -104,7 +116,7 @@ object ReTree {
 
     lazy val firsts = {
       var p = childs
-      var ret = List[Node]()
+      var ret = List[CharNode]()
       while (! p.isEmpty && p.head.isNull) {
         ret :::=p.head.firsts
         p = p.tail
@@ -203,6 +215,11 @@ object ReTree {
               el.append(a2)
               args.push(el)
             case (x1 : UnarOpNode,x2 : CharNode)   => 
+              val el = new OrNode()
+              el.append(a1)
+              el.append(a2)
+              args.push(el)
+            case (x1 : FollowNode,x2 : CharNode)   => 
               val el = new OrNode()
               el.append(a1)
               el.append(a2)
@@ -372,6 +389,40 @@ object ReTree {
       setParents(chld,r)
     }
   }
+
+  def setNums(r:Node):Int = {
+    def _setNums(r:Node,_idx:Int):Int = {
+      var idx = _idx
+      def __setNums(r:Node):Int = {
+        r match {
+          case x:OrNode => 
+            var nidx = idx
+            for (chld <- r.childs) {
+              chld match {
+                case x:CharNode => 
+                  x.num = idx
+                  nidx = nidx max idx + 1
+                case _ => nidx = nidx max _setNums(chld,idx) 
+              }
+            }
+            idx = nidx
+          case _ => 
+            for (chld <- r.childs) {
+              chld match {
+                case x:CharNode => x.num = idx;idx+=1
+                case _ => __setNums(chld)
+              }
+            }
+        }
+        idx
+      }
+      __setNums(r)
+    }
+
+    _setNums(r,1)
+  }
+
+  /*
   def setNums(r:Node) {
     var idx = 1
     def _setNums(r:Node) {
@@ -384,6 +435,7 @@ object ReTree {
     }
     _setNums(r)
   }
+  */
   def postProcess(r:Node,parent:Node=RootNode):Node = {
     def processChild(newL:List[Node],oldC:Node) = oldC match {
       case x:PlusNode => 
@@ -506,8 +558,97 @@ class ReTree(var root:ReTree.FollowNode) {
     
     nb.toString + sb.toString + sb2.toString
   }
-  def search(sa:SuffixWalkingAlgo,debugLevel:Int):List[SAResult] = {
+
+  case class StatePoint(len:Int,sp:Int,ep:Int,state:ReTree.CharNode) extends Ordered[StatePoint] {
+      val cnt = ep - sp
+      def compare(that:StatePoint) = if (that.state.num < this.state.num) -1 else if (that.state.num > this.state.num) 1 else 0
+
+      // override def toString = "(%s:%d,icount=%d,len=%d)" format (state,len,icnt,cnt)
+  }
+
+
+  def matchSA(sa:SuffixWalkingAlgo,debugLevel:Int=0,maxBranching:Int=1024,maxIterations:Int=1000,maxClasterLen:Int=100):List[SAResult] = {
     def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
-    ???
+    def retsCount(r:List[SAResult]) = r.view.map(_.cnt).sum 
+    //def frontCount(r:List[StatePoint]) = r.view.map(_.cnt).sum 
+    def front2Res(r:Iterable[StatePoint]) = r.view.map { x:StatePoint => SAResult(sa,x.len,x.sp,x.ep) }.toList
+
+    val (ret,pqFront) = _matchSA(sa,root.firsts.map { StatePoint(0,0,sa.n,_) },debugLevel,maxBranching,maxIterations)
+    
+    if (pqFront.isEmpty) ret else {
+      var fronts:List[List[SAResult]] = List( front2Res(pqFront)  )
+      var curFront = pqFront
+      while (! curFront.isEmpty ) {
+        val farestStateNum = curFront.min.state.num
+        val newStateFront  = curFront.filter(_.state.num == farestStateNum).groupBy(_.state).keys.toList
+        val (ret2,pqFront2) = _matchSA(sa,newStateFront.map { StatePoint(0,0,sa.n,_) },debugLevel,maxBranching,maxIterations)
+        curFront = pqFront2
+        if ( pqFront2.isEmpty ) {
+          fronts::=ret2
+        } else {
+          fronts::=front2Res(pqFront2)
+        }
+      }
+      // 4 possible strategies 
+      // 1. some really small - block < 1000 zb 
+      // 2. medium size blocks that can be merged
+      // 3. just minimum large block that can be bruteforced
+      // 4. huge block - what should we do just bruteforce all
+      val sizes = fronts.view.map {x => retsCount(x) ->  x}
+      if ( debugLevel >= 1 ) {
+        println("Alternatives found")
+        sizes.view.foreach { x=> println(x._1) }
+        println("------------------")
+      }
+      val minSize = sizes.view.map {_._1}.min
+
+      if ( minSize < 10000 ) {
+        debug(1,"minSize %d is rather small - take first alternative",minSize)
+        val Some(vars) = sizes.view.find({_._1 == minSize})
+        val oneRes = vars._2.head
+        println(oneRes.sp,oneRes.ep,oneRes.len)
+      }
+      //for (c <- fronts) {
+      //  println("Claster FrontsLen=%d".format(retsCount(c)))
+      //}
+      
+      ret
+    }
+  }
+  def _matchSA(sa:SuffixWalkingAlgo,inputStates:List[StatePoint],debugLevel:Int=0,maxBranching:Int=1024,maxIterations:Int=1000) = {
+    def debug(l:Int,s: =>String  ,xs: Any*) = if (l<=debugLevel) println(("matchSA: " +s).format(xs: _*))
+
+    var pqFront = new PriorityQueue[StatePoint]()
+    var i = 1
+    var ret = List[SAResult]()
+    pqFront++=inputStates
+    
+    debug(1,"Start searching front %s",pqFront)
+
+    while (! pqFront.isEmpty && pqFront.length < maxBranching && ( maxIterations==0 || i < maxIterations ) ) {
+      val q = pqFront.dequeue
+
+      debug(2,"%d Take State=%s#%d FrontSize=%d",i,q.state,q.state.num,pqFront.length)
+
+      sa.getPrevRange(q.sp,q.ep,q.state.c) match {
+        case Some((sp1,ep1))      => 
+          debug(2,"%d Found for State=%s Interval = [ %d-%d ] ",i,q.state,sp1,ep1)
+          if ( q.state.isLast ) {
+            debug(2,"%d Found Matching for State=%s",i,q.state)
+            ret ::= { SAResult(sa,q.len+1,sp1,ep1) }
+          } else {
+            debug(2,"%d Expands to %s ",i,q.state.follows)
+            pqFront++=q.state.follows.map { StatePoint(q.len+1,sp1,ep1,_) }
+          }
+        
+          // ret ::= Interval(sp1,ep1)
+        case None                 => 
+          debug(2,"%d Found for State=%s Nothing Found ",i,q.state)
+      }
+
+      i+=1
+    }
+    
+    (ret,pqFront)
   }
 }

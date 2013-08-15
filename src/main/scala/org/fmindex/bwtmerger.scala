@@ -403,6 +403,8 @@ class NaiveFMSearcher(filename:String,bigEndian:Boolean=true) extends SuffixWalk
     }
     ret.reverse.toString
   }
+
+  //def readlineIdx(sp,)
   
   def prevSubstr(sp:Int,len:Int):String = {
     var cp = sp

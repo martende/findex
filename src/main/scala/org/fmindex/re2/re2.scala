@@ -17,6 +17,7 @@ case class SAResult(sa:SuffixWalkingAlgo,len:Int,sp:Int,ep:Int) {
       "[no results]" 
   override def toString = strResult
 }
+
 object REParser {
   val MIN_CHAR=2.toChar
   val MAX_CHAR=255.toChar
@@ -46,7 +47,7 @@ object REParser {
     override def toString = "|"
   }
   type PostfixRe = List[PostPoint]
-  def re2post(str:String):PostfixRe = {
+  def re2post(str:String,lineOnly:Boolean=false):PostfixRe = {
     var i = 0
     val l = str.length
     var natom=0
@@ -66,7 +67,7 @@ object REParser {
         case 'd' => new IntervalPoint('0','9')
         case _ =>  new CharPoint(c)
       } else c match {
-        case '.' => new IntervalPoint(MIN_CHAR,MAX_CHAR)
+        case '.' => if (lineOnly) new IntervalPoint(0x20,MAX_CHAR) else new IntervalPoint(MIN_CHAR,MAX_CHAR)
         case _ =>  new CharPoint(c)
       })
       
